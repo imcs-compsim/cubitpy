@@ -71,6 +71,7 @@ class CubitPy(object):
             cubit_path = cupy.get_default_paths('cubit')
         if pre_exodus is None:
             pre_exodus = cupy.get_default_paths('pre_exodus', False)
+        #print(pre_exodus)
 
         # Arguments for cubit.
         if cubit_args is None:
@@ -236,6 +237,8 @@ class CubitPy(object):
             'STRUCTURE', ' '.join([material, bc_description]),
             el_type.get_baci_name()
             ])
+        #print("this")
+        #print(self.blocks)
 
     def reset_blocks(self):
         """
@@ -385,8 +388,11 @@ class CubitPy(object):
                     '*ns{}="CONDITION"\nsectionname="{}"\n'
                     + 'description="{}"\n\n').format(
                         i + 1, node_set[0], node_set[1]))
+        print(head_path)
+        print(bc_path)
+        #os.system(cat bc_path)
 
-    def create_dat(self, dat_path):
+    def create_dat(self, output_file):
         """
         Create the dat file an copy it to dat_path.
         """
@@ -409,6 +415,7 @@ class CubitPy(object):
 
         with open(self._create_dat()) as dat_file:
             lines = dat_file.readlines()
+            #print(lines)
         return lines
 
     def _create_dat(self):
@@ -446,6 +453,8 @@ class CubitPy(object):
             ], cwd=cupy.temp_dir)
 
         # Return the path to the dat file.
+        #print(os.path.join(cupy.temp_dir, 'cubitpy.exo'))
+        #print(os.path.join(cupy.temp_dir, 'cubitpy.dat'))
         return os.path.join(cupy.temp_dir, 'cubitpy.dat')
 
     def group(self, **kwargs):
