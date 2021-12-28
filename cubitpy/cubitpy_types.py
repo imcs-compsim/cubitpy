@@ -124,7 +124,7 @@ class ElementType(Enum):
     tet4 = auto()
     tet10 = auto()
     hex8sh = auto()
-    wedge = auto()
+    wedge6 = auto()
     hex8_fluid = auto()
 
     def get_string(self):
@@ -139,8 +139,8 @@ class ElementType(Enum):
             return 'tet4'
         elif self == self.tet10:
             return 'tet10'
-        elif self == self.wedge:
-            return 'wedge'
+        elif self == self.wedge6:
+            return 'wedge6'
         elif self == self.hex8_fluid:
             return 'hex8_fluid'
 
@@ -166,7 +166,7 @@ class ElementType(Enum):
         elif self == self.tet10:
             cubit_scheme = 'Tetmesh'
             cubit_element_type = 'TETRA10'
-        elif self == self.wedge:
+        elif self == self.wedge6:
             cubit_scheme = 'Auto'
             cubit_element_type = 'WEDGE'
         else:
@@ -190,7 +190,7 @@ class ElementType(Enum):
             return 'SOLIDT10'
         elif self == self.hex8sh:
             return 'SOLIDSH8'
-        elif self == self.wedge:
+        elif self == self.wedge6:
             return 'SOLIDW6'
         elif self == self.hex8_fluid:
             return 'FLUID'
@@ -210,7 +210,7 @@ class ElementType(Enum):
                 or self == self.hex27
                 or self == self.tet4
                 or self == self.tet10
-                or self == self.wedge):
+                or self == self.wedge6):
             return 'KINEM nonlinear'
         elif self == self.hex8sh:
             return 'KINEM nonlinear EAS none ANS none THICKDIR auto'
