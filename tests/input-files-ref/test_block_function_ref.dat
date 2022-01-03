@@ -1249,15 +1249,5 @@ NODE       871 COORD  1.0250000000000000e+01  4.0000000596046448e-01  5.50000011
    356 SOLIDSH8 HEX8  855 854 858 859 863 862 864 865    test material string KINEM nonlinear EAS none ANS none THICKDIR auto
    357 SOLIDSH8 HEX8  860 861 862 863 866 867 868 869    test material string KINEM nonlinear EAS none ANS none THICKDIR auto
    358 SOLIDSH8 HEX8  863 862 864 865 869 868 870 871    test material string KINEM nonlinear EAS none ANS none THICKDIR auto
-----------------------------------------------------FLUID ELEMENTS
-------------------------------------------------------ALE ELEMENTS
-------------------------------------------------LUBRICATION ELEMENTS
-------------------------------------------------TRANSPORT ELEMENTS
-------------------------------------------------TRANSPORT2 ELEMENTS
----------------------------------------------------THERMO ELEMENTS
----------------------------------------------------CELL ELEMENTS
----------------------------------------------------CELLSCATRA ELEMENTS
----------------------------------------------------ELECTROMAGNETIC ELEMENTS
--------------------------------------------------------ARTERY ELEMENTS
 ---------------------------------------------------------------END
 // END

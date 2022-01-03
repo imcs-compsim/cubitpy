@@ -4639,15 +4639,5 @@ NODE      3392 COORD  4.4999998807907104e-01  7.7942287921905518e-01  1.79999995
    1048 SOLIDSH8 HEX8  3326 3325 3329 3330 3386 3385 3389 3390    MAT 1 KINEM nonlinear EAS none ANS none THICKDIR auto
    1049 SOLIDSH8 HEX8  3325 3327 3331 3329 3385 3387 3391 3389    MAT 1 KINEM nonlinear EAS none ANS none THICKDIR auto
    1050 SOLIDSH8 HEX8  3327 3328 3332 3331 3387 3388 3392 3391    MAT 1 KINEM nonlinear EAS none ANS none THICKDIR auto
-----------------------------------------------------FLUID ELEMENTS
-------------------------------------------------------ALE ELEMENTS
-------------------------------------------------LUBRICATION ELEMENTS
-------------------------------------------------TRANSPORT ELEMENTS
-------------------------------------------------TRANSPORT2 ELEMENTS
----------------------------------------------------THERMO ELEMENTS
----------------------------------------------------CELL ELEMENTS
----------------------------------------------------CELLSCATRA ELEMENTS
----------------------------------------------------ELECTROMAGNETIC ELEMENTS
--------------------------------------------------------ARTERY ELEMENTS
 ---------------------------------------------------------------END
 // END
