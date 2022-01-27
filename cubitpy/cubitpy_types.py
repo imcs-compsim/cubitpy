@@ -230,6 +230,7 @@ class BoundaryConditionType(Enum):
     beam_to_solid_surface_contact = auto()
     solid_to_solid_surface_contact = auto()
     fsi = auto()
+    ale = auto()
 
     def get_dat_bc_section_header(self, geometry_type):
         """
@@ -268,6 +269,10 @@ class BoundaryConditionType(Enum):
                 (geometry_type == GeometryType.surface
                     or geometry_type == FiniteElementObject.node)):
             return 'DESIGN FSI COUPLING SURF CONDITIONS'
+        elif (self == self.ale and
+                (geometry_type == GeometryType.surface
+                    or geometry_type == FiniteElementObject.node)):
+            return 'DESIGN SURF ALE DIRICH CONDITIONS'           
         else:
             raise ValueError('No implemented case for {} and {}!'.format(
                 self, geometry_type))
