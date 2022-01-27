@@ -385,11 +385,8 @@ class CubitPy(object):
                     '*ns{}="CONDITION"\nsectionname="{}"\n'
                     + 'description="{}"\n\n').format(
                         i + 1, node_set[0], node_set[1]))
-        print(head_path)
-        print(bc_path)
-        #os.system(cat bc_path)
 
-    def create_dat(self, output_file):
+    def create_dat(self, dat_path):
         """
         Create the dat file an copy it to dat_path.
         """
