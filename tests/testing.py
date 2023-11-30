@@ -47,6 +47,8 @@ testing_external_geometry = os.path.join(testing_path, "external-geometry")
 from cubitpy import CubitPy, cupy, get_surface_center
 from cubitpy.mesh_creation_functions import create_brick, extrude_mesh_normal_to_surface
 from cubitpy.geometry_creation_functions import create_parametric_surface
+from cubitpy.cubit_utility import import_fluent_geometry
+
 
 # Global variable if this test is run by GitLab.
 if "TESTING_GITLAB" in os.environ.keys() and os.environ["TESTING_GITLAB"] == "1":
@@ -1277,7 +1279,7 @@ def test_import_fluent_geometry():
 
     fluent_geometry = os.path.join(testing_external_geometry, "fluent_aneurysm.msh")
     cubit = CubitPy()
-    cubit.Import_Fluent_Geometry(fluent_geometry)
+    import_fluent_geometry(cubit, fluent_geometry)
     assert False == cubit.was_last_cmd_undoable()
 
 
@@ -1288,7 +1290,7 @@ def test_import_fluent_geometry_feature_angle():
 
     fluent_geometry = os.path.join(testing_external_geometry, "fluent_aneurysm.msh")
     cubit = CubitPy()
-    cubit.Import_Fluent_Geometry(fluent_geometry, 100)
+    import_fluent_geometry(cubit, fluent_geometry, 100)
     assert False == cubit.was_last_cmd_undoable()
 
     # test if we really have imported 1 volume with 4 surfaces including 1 mesh

@@ -242,7 +242,6 @@ class CubitPy(object):
         # Add data that will be written to bc file.
         self.blocks.append([el_type, " ".join([material, bc_description])])
 
-
     def reset_blocks(self):
         """
         This method deletes all blocks in Cubit and resets the counter in
@@ -581,10 +580,3 @@ class CubitPy(object):
             subprocess.call(cubit_command, cwd=cupy.temp_dir)
         else:
             return journal_path
-    
-    def import_fluent_geometry(self, file,feature_angle=135):
-       """ 
-       import fluent mesh geometry in cubit from file with according feature_angle
-       """
-       
-       self.cmd('import fluent mesh geometry  "{}" feature_angle {} '.format(file,feature_angle))

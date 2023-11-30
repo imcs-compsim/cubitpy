@@ -50,3 +50,15 @@ def get_surface_center(surf):
     range_v = surf.get_param_range_V()
     v = 0.5 * (range_v[1] + range_v[0])
     return surf.position_from_u_v(u, v)
+
+
+def import_fluent_geometry(cubit, file, feature_angle=135):
+    """
+    import fluent mesh geometry in cubit from file with according feature_angle
+    """
+
+    cubit.cmd(
+        'import fluent mesh geometry  "{}" feature_angle {} '.format(
+            file, feature_angle
+        )
+    )
