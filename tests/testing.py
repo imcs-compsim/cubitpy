@@ -41,6 +41,7 @@ import pytest
 testing_path = os.path.abspath(os.path.dirname(__file__))
 testing_input = os.path.join(testing_path, "input-files-ref")
 testing_temp = os.path.join(testing_path, "testing-tmp")
+testing_input_geometry=os.path.join(testing_path, "input-geometry")
 
 # CubitPy imports.
 from cubitpy import CubitPy, cupy, get_surface_center
@@ -1267,3 +1268,31 @@ def test_create_parametric_surface():
 
     assert 0.0 == pytest.approx(np.linalg.norm(coordinates - coordinates_ref), 1e-12)
     assert np.linalg.norm(connectivity - connectivity_ref) == 0
+
+
+def test_import_fluent_geometry():
+    """ 
+    Test if the simplest comand to import a fluent geometry works without error. 
+    """
+    
+    fluent_geometry= os.path.join(testing_input_geometry,"fluent_aneurysm.msh")
+    cubit = CubitPy()
+    cubit.Import_Fluent_Geometry(fluent_geometry)
+    assert False == cubit.was_last_cmd_undoable()
+
+
+def test_import_fluent_geometry_feature_angle():
+    """ 
+    Import a specific aneurysm geometry and test if has a volume with exact 4 surfaces and a mesh. 
+    """
+    
+    fluent_geometry= os.path.join(testing_input_geometry,"fluent_aneurysm.msh")
+    cubit = CubitPy()
+    cubit.Import_Fluent_Geometry(fluent_geometry,100)
+    assert False == cubit.was_last_cmd_undoable()
+
+    # test if we really have imported 1 volume with 4 surfaces including 1 mesh 
+    assert len(cubit.get_entities("surface"))==4 
+    assert cubit.get_volume_count()==1 
+    assert cubit.get_block_count()==1 
+    

@@ -212,7 +212,6 @@ class CubitPy(object):
         geometry_type = item.get_geometry_type()
 
         self.cubit.cmd("create block {}".format(n_blocks + 1))
-
         if not isinstance(item, CubitGroup):
             cubit_scheme, cubit_element_type = el_type.get_cubit_names()
 
@@ -242,6 +241,7 @@ class CubitPy(object):
 
         # Add data that will be written to bc file.
         self.blocks.append([el_type, " ".join([material, bc_description])])
+
 
     def reset_blocks(self):
         """
@@ -581,3 +581,10 @@ class CubitPy(object):
             subprocess.call(cubit_command, cwd=cupy.temp_dir)
         else:
             return journal_path
+    
+    def import_fluent_geometry(self, file,feature_angle=135):
+       """ 
+       import fluent mesh geometry in cubit from file with according feature_angle
+       """
+       
+       self.cmd('import fluent mesh geometry  "{}" feature_angle {} '.format(file,feature_angle))
