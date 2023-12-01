@@ -212,6 +212,7 @@ class CubitPy(object):
         geometry_type = item.get_geometry_type()
 
         self.cubit.cmd("create block {}".format(n_blocks + 1))
+
         if not isinstance(item, CubitGroup):
             cubit_scheme, cubit_element_type = el_type.get_cubit_names()
 
