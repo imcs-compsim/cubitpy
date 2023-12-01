@@ -1272,28 +1272,37 @@ def test_create_parametric_surface():
     assert np.linalg.norm(connectivity - connectivity_ref) == 0
 
 
+def setup_and_check_import_fluent_geometry(
+    fluent_geometry, feature_angle, reference_entitys_number
+):
+    """
+    Test if cubit can import a geometry and:
+        1) proceed without error
+        2) has created the same number of the reference entitys [volumes, surfaces, blocks]
+    """
+
+    # Setup
+    cubit = CubitPy()
+    import_fluent_geometry(cubit, fluent_geometry, feature_angle)
+
+    # check if importation was successful
+    assert False == cubit.was_last_cmd_undoable()
+
+    # check number of entitys
+    assert cubit.get_volume_count() == reference_entitys_number[0]
+    assert len(cubit.get_entities("surface")) == reference_entitys_number[1]
+    assert cubit.get_block_count() == reference_entitys_number[2]
+
+
 def test_import_fluent_geometry():
     """
-    Test if the simplest comand to import a fluent geometry works without error.
+    Test if an aneurysm geometry can be imported from a fluent mesh.
     """
 
     fluent_geometry = os.path.join(testing_external_geometry, "fluent_aneurysm.msh")
-    cubit = CubitPy()
-    import_fluent_geometry(cubit, fluent_geometry)
-    assert False == cubit.was_last_cmd_undoable()
 
+    # for a feature angle of 135, the imported geometry should consist of 1 volume, 7 surfaces and 1 block
+    setup_and_check_import_fluent_geometry(fluent_geometry, 135, [1, 7, 1])
 
-def test_import_fluent_geometry_feature_angle():
-    """
-    Import a specific aneurysm geometry and test if has a volume with exact 4 surfaces and a mesh.
-    """
-
-    fluent_geometry = os.path.join(testing_external_geometry, "fluent_aneurysm.msh")
-    cubit = CubitPy()
-    import_fluent_geometry(cubit, fluent_geometry, 100)
-    assert False == cubit.was_last_cmd_undoable()
-
-    # test if we really have imported 1 volume with 4 surfaces including 1 mesh
-    assert len(cubit.get_entities("surface")) == 4
-    assert cubit.get_volume_count() == 1
-    assert cubit.get_block_count() == 1
+    # for a feature angle of 100, the imported geometry should consist of 1 volume, 4 surfaces and 1 block
+    setup_and_check_import_fluent_geometry(fluent_geometry, 100, [1, 4, 1])
