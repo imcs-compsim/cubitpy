@@ -1366,7 +1366,12 @@ def test_get_id_functions():
         cupy.geometry.curve
     )
     assert [1, 2, 3, 4, 5, 6, 7] == cubit.get_ids(cupy.geometry.surface)
-    assert [2] == cubit.get_ids(cupy.geometry.volume)
+    if cupy.is_coreform():
+        ref_ids = [1, 2]
+        assert [1, 2] == cubit.get_ids(cupy.geometry.volume)
+    else:
+        ref_ids = [2]
+    assert ref_ids == cubit.get_ids(cupy.geometry.volume)
 
 
 def test_get_node_id_function():
