@@ -1162,7 +1162,7 @@ def test_serialize_nested_lists():
     block_2 = cubit.brick(0.5, 0.5, 0.5)
     subtracted_block = cubit.subtract([block_2], [block_1])
     cubit.cmd(
-        "volume {} size auto factor 10".format(subtracted_block[0].volumes()[0].id())
+        "volume {} size auto factor 9".format(subtracted_block[0].volumes()[0].id())
     )
     subtracted_block[0].volumes()[0].mesh()
     cubit.add_element_type(subtracted_block[0].volumes()[0], cupy.element_type.hex8)
