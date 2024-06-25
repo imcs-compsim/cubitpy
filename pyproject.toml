@@ -5,11 +5,13 @@ requires = ["setuptools"]
 packages = [
   "cubitpy",
   "cubitpy.cubit_wrapper",
-  "cubitpy_testing"
+  "cubitpy_testing",
+  "cubitpy_tutorial"
 ]
 
 [tool.setuptools.package-dir]
 cubitpy_testing = "tests"
+cubitpy_tutorial = "tutorial"
 
 [project]
 name = "CubitPy"

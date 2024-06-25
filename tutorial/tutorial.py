@@ -40,7 +40,7 @@ from cubitpy import CubitPy, cupy
 from cubitpy.cubit_utility import get_surface_center
 
 
-def cubit_step_by_step_tutorial_cli(input_file_path, *, display=True):
+def cubit_step_by_step_tutorial_cli(input_file_path, *, display=True, cubit=None):
     """This tutorial follows the Cubit step-by-step tutorial, which can be found
     in the cubit documentation"""
 
@@ -52,7 +52,8 @@ def cubit_step_by_step_tutorial_cli(input_file_path, *, display=True):
     # cubit python interface and provides all functionality of the direct cubit
     # python interface and also adds some additional functionality to make the
     # creation of 4C input files easier.
-    cubit = CubitPy()
+    if None == cubit:
+        cubit = CubitPy()
 
     # Once the CubitPy object is initialized, we can create our first brick
     # object. To do so we use the cubit python interface function `brick`.
