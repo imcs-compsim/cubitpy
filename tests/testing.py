@@ -512,7 +512,11 @@ def test_extrude_mesh_function():
     )
 
     # Check the created volume.
-    assert 0.6917559630511103 == pytest.approx(
+    if cupy.is_coreform():
+        ref_volume = 0.6934429579015018
+    else:
+        ref_volume = 0.6917559630511103
+    assert ref_volume == pytest.approx(
         cubit.get_meshed_volume_or_area("volume", [volume.id()]), 1e-10
     )
 
