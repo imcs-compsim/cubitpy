@@ -598,7 +598,11 @@ def test_extrude_mesh_function():
     )
 
     # Check the created volume.
-    assert 0.6917559630511103 == pytest.approx(
+    if cupy.is_coreform():
+        ref_volume = 0.6934429579015018
+    else:
+        ref_volume = 0.6917559630511103
+    assert ref_volume == pytest.approx(
         cubit.get_meshed_volume_or_area("volume", [volume.id()]), 1e-10
     )
 
@@ -695,7 +699,11 @@ def test_extrude_mesh_function_average_normals_for_cylinder_and_sphere():
     )
 
     # Check the size of the created volume.
-    assert 0.02668549643643842 == pytest.approx(
+    if cupy.is_coreform():
+        ref_volume = 0.026753602587277842
+    else:
+        ref_volume = 0.02668549643643842
+    assert ref_volume == pytest.approx(
         cubit.get_meshed_volume_or_area("volume", [volume.id()]), 1e-10
     )
 
@@ -1704,6 +1712,10 @@ def test_extrude_artery_of_aneurysm():
     )
 
     # Check the created volume.
-    assert 13.570135865871498 == pytest.approx(
+    if cupy.is_coreform():
+        ref_volume = 13.613844185308892
+    else:
+        ref_volume = 13.570135865871498
+    assert ref_volume == pytest.approx(
         cubit.get_meshed_volume_or_area("volume", [volume.id()]), 1e-5
     )
