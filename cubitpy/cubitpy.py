@@ -336,7 +336,10 @@ class CubitPy(object):
 
     def export_cub(self, path):
         """Export the cubit input."""
-        self.cubit.cmd('save as "{}" overwrite'.format(path))
+        if cupy.is_coreform():
+            self.cubit.cmd(f'save cub5 "{path}" overwrite journal')
+        else:
+            self.cubit.cmd('save as "{}" overwrite'.format(path))
 
     def export_exo(self, path):
         """Export the mesh."""
@@ -410,7 +413,10 @@ class CubitPy(object):
         # TODO: find a way to do this without the wait command, but to check if
         # the file is readable.
         os.makedirs(cupy.temp_dir, exist_ok=True)
-        state_path = os.path.join(cupy.temp_dir, "state.cub")
+        if cupy.is_coreform():
+            state_path = os.path.join(cupy.temp_dir, "state.cub5")
+        else:
+            state_path = os.path.join(cupy.temp_dir, "state.cub")
         self.export_cub(state_path)
         time.sleep(delay)
 

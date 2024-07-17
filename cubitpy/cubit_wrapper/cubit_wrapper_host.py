@@ -56,7 +56,7 @@ class CubitConnect(object):
         *,
         cubit_args=None,
         cubit_lib=None,
-        interpreter="popen//python=python2.7",
+        interpreter=None,
     ):
         """Initialize the connection between the client (cubit) python interpreter and this one.
         Also load the cubit module in the remote interpreter.
@@ -73,6 +73,9 @@ class CubitConnect(object):
         interpreter: str
             Python interpreter to be used for running cubit.
         """
+
+        if interpreter is None:
+            interpreter = cupy.get_cubit_interpreter()
 
         if cubit_lib is None:
             cubit_lib = cupy.get_cubit_lib_path()

@@ -37,6 +37,7 @@ cubitpy.
 import os
 import getpass
 from sys import platform
+import glob
 
 # Cubitpy imports.
 from .cubitpy_types import (
@@ -102,7 +103,11 @@ class CubitOptions(object):
         if platform == "linux" or platform == "linux2":
             return os.path.join(cubit_root, "cubit")
         elif platform == "darwin":
-            return os.path.join(cubit_root, "Contents/MacOS/Cubit")
+            if cupy.is_coreform():
+                cubit_exe_name = cubit_root.split("/")[-1].split(".app")[0]
+                return os.path.join(cubit_root, "Contents/MacOS", cubit_exe_name)
+            else:
+                return os.path.join(cubit_root, "Contents/MacOS/Cubit")
         else:
             raise ValueError("Got unexpected platform")
 
@@ -112,9 +117,39 @@ class CubitOptions(object):
         if platform == "linux" or platform == "linux2":
             return os.path.join(cubit_root, "bin")
         elif platform == "darwin":
-            return os.path.join(cubit_root, "Contents/MacOS")
+            if cls.is_coreform():
+                return os.path.join(cubit_root, "Contents/lib")
+            else:
+                return os.path.join(cubit_root, "Contents/MacOS")
         else:
             raise ValueError("Got unexpected platform")
+
+    @classmethod
+    def get_cubit_interpreter(cls):
+        """Get the path to the interpreter to be used for CubitPy"""
+        cubit_root = cls.get_cubit_root_path()
+        if cls.is_coreform():
+            pattern = "**/python3"
+            full_pattern = os.path.join(cubit_root, pattern)
+            python3_matches = glob.glob(full_pattern, recursive=True)
+            python3_files = [path for path in python3_matches if os.path.isfile(path)]
+            if not len(python3_files) == 1:
+                raise ValueError(
+                    "Could not find the path to the cubit python interpreter"
+                )
+            cubit_python_interpreter = python3_files[0]
+            return f"popen//python={cubit_python_interpreter}"
+        else:
+            return "popen//python=python2.7"
+
+    @classmethod
+    def is_coreform(cls):
+        """Return if the given path is a path to cubit coreform"""
+        cubit_root = cls.get_cubit_root_path()
+        if "15.2" in cubit_root:
+            return False
+        else:
+            return True
 
 
 # Global object with options for cubitpy.
