@@ -49,7 +49,7 @@ def create_brick(
     mesh_interval=None,
     mesh_factor=None,
     mesh=True,
-    **kwargs
+    **kwargs,
 ):
     """
     Create a cube in cubit.
@@ -130,7 +130,15 @@ def create_brick(
 
 
 def extrude_mesh_normal_to_surface(
-    cubit, surfaces, thickness, n_layer=2, offset=[0, 0, 0], extrude_dir="outside"
+    cubit,
+    surfaces,
+    thickness,
+    n_layer=2,
+    offset=[0, 0, 0],
+    extrude_dir="outside",
+    average_normals=False,
+    tol_coord=1e-10,
+    tol_normal=1e-10,
 ):
     """
     Extrude multiple meshed surfaces in normal direction of the surfaces.
@@ -152,6 +160,12 @@ def extrude_mesh_normal_to_surface(
         Direction of the extrusion.
     feature_angle: float
         Feature angle of the created volume.
+    average_normals: bool
+        Averages the different normals of the same coordinate evaluted at multiple surfaces.
+    tol_coord: double
+        Tolerance for the norm of the difference between node coordinates with the same ID
+    tol_normal: double
+        Tolerance for the norm of the difference between node normals evaluated at different surfaces
     ----
     return: [CubitVolume]
         Return a volume created from the combined elements created in this
@@ -186,6 +200,7 @@ def extrude_mesh_normal_to_surface(
         if len(surface_nodes) == 0:
             raise ValueError("Each surface must be meshed!")
 
+        node_ids_to_average = []
         # Get normals and positions of the nodes.
         for node_id in surface_nodes:
             my_coordinates = np.array(cubit.get_nodal_coordinates(node_id))
@@ -194,17 +209,59 @@ def extrude_mesh_normal_to_surface(
                 # Check that the normal and position are equal.
                 other_coordinates = node_id_pos_normal_map[node_id][0]
                 other_normal = node_id_pos_normal_map[node_id][1]
-                if (
-                    np.linalg.norm(my_coordinates - other_coordinates) > 1e-10
-                    or (np.linalg.norm(my_normal - other_normal)) > 1e-10
-                ):
-                    raise ValueError("Positions or normals do not match!")
+
+                # check if coordinates match.
+                if np.linalg.norm(my_coordinates - other_coordinates) < tol_coord:
+
+                    # check if normals do not match.
+                    if (np.linalg.norm(my_normal - other_normal)) > tol_normal:
+
+                        # add nodes to average calculation.
+                        if average_normals == True:
+                            node_ids_to_average.append(node_id)
+                        else:
+                            raise ValueError(
+                                f"Normals of node with ID {node_id} do not match!"
+                            )
+                else:
+                    raise ValueError(
+                        f"Coordinates of node with ID {node_id} do not match!"
+                    )
+
             else:
                 node_id_pos_normal_map[node_id] = [my_coordinates, my_normal]
 
     # Get a sorted list of the nodes on the surfaces.
     node_ids = list(node_id_pos_normal_map.keys())
     node_ids.sort()
+
+    # perform averaging of normals if desired.
+    if average_normals == True:
+        for node_id in node_ids_to_average:
+
+            # get coordinate.
+            my_coordinates = np.array(cubit.get_nodal_coordinates(node_id))
+
+            # set up new normal.
+            new_normal = np.array([0.0, 0.0, 0.0])
+
+            # add all the normals of the different surfaces if the point lies on the surface.
+            for surf in surfaces:
+                if surf.point_containment(my_coordinates):
+                    new_normal += np.array(surf.normal_at(my_coordinates))
+
+            # check if a reasonable normal was calculated.
+            if np.abs(np.linalg.norm(new_normal)) < tol_normal:
+                raise ValueError(
+                    f"Normal calculation of {node_id} failed. Normal is: ",
+                    np.linalg.norm(new_normal),
+                )
+
+            # normalize the normal.
+            new_normal = new_normal / np.linalg.norm(new_normal)
+
+            # adjust the normal in the map.
+            node_id_pos_normal_map[node_id][1] = new_normal
 
     # Create the new nodal coordinates.
     n_nodes = len(node_ids)
