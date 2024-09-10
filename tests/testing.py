@@ -567,7 +567,6 @@ def test_extrude_mesh_function(kwargs):
     cut_surface_ids_string = " ".join(map(str, cut_surface_ids))
     cubit.cmd("surface {} size auto factor 9".format(cut_surface_ids_string))
     cubit.cmd("mesh surface {}".format(cut_surface_ids_string))
-
     # Extrude the surface.
     volume = extrude_mesh_normal_to_surface(
         cubit,
@@ -576,10 +575,96 @@ def test_extrude_mesh_function(kwargs):
         n_layer=3,
         extrude_dir="symmetric",
         offset=[1, 2, 3],
+        average_normals=False,
     )
 
     # Check the created volume.
     assert 0.6917559630511103 == pytest.approx(
+        np.abs(cubit.get_meshed_volume_or_area("volume", [volume.id()])), 1e-10
+    )
+
+    # Set the mesh for output.
+    cubit.add_element_type(volume, cupy.element_type.hex8)
+
+    # Compare the input file created for 4C.
+    compare(cubit, single_precision=False, **kwargs)
+
+
+@pytest.mark.parametrize(*get_pre_processor_decorator(True, False))
+def test_extrude_mesh_function_average_normals_block(kwargs):
+    """Test the average extrude mesh function for two blocks."""
+
+    # Initialize cubit.
+    cubit = CubitPy()
+
+    # Create L-shaped geometry
+    cubit.cmd("create brick x 1")
+    cubit.cmd("create brick x 2 y 1 z 1")
+    cubit.cmd("move volume 1 x -0.5 y 1")
+    cubit.cmd("unite volume 1,2")
+
+    # extract surfaces normal to eacht other.
+    surface_ids = cubit.get_entities(cupy.geometry.surface)
+    extrude_surface_ids = [surface_ids[-4], surface_ids[-1]]
+    extrude_surface_ids_string = " ".join(map(str, extrude_surface_ids))
+
+    # create the mesh.
+    cubit.cmd("surface {} size auto factor 9".format(extrude_surface_ids_string))
+    cubit.cmd("mesh surface {}".format(extrude_surface_ids_string))
+
+    # Extrude the surfaces.
+    volume = extrude_mesh_normal_to_surface(
+        cubit,
+        [cubit.surface(i) for i in extrude_surface_ids],
+        0.1,
+        n_layer=3,
+        extrude_dir="inside",
+        average_normals=True,
+    )
+
+    # Check the created volume.
+    assert 0.1924264068711928 == pytest.approx(
+        np.abs(cubit.get_meshed_volume_or_area("volume", [volume.id()])), 1e-10
+    )
+
+    # Set the mesh for output.
+    cubit.add_element_type(volume, cupy.element_type.hex8)
+
+    # Compare the input file created for 4C.
+    compare(cubit, single_precision=False, **kwargs)
+
+
+@pytest.mark.parametrize(*get_pre_processor_decorator(True, False))
+def test_extrude_mesh_function_average_normals_for_cylinder_and_sphere(kwargs):
+    """Test the average extrude mesh function for curved surfaces (Toy Aneurysm Case)."""
+
+    # Initialize cubit.
+    cubit = CubitPy()
+
+    # Unite a cylinder with a sphere to a toy aneurysm.s
+    cubit.cmd("create Cylinder height 1 radius 0.5")
+    cubit.cmd("create sphere radius 0.4")
+    cubit.cmd("move volume 2 x 0 y 0.8")
+    cubit.cmd("unite volume 1 2")
+
+    # mesh the connected cylinder and sphere surfaces
+    surface_ids = cubit.get_entities(cupy.geometry.surface)
+    extrude_surface_ids = [surface_ids[-2], surface_ids[-1]]
+    extrude_surface_ids_string = " ".join(map(str, extrude_surface_ids))
+    cubit.cmd("mesh surface {}".format(extrude_surface_ids_string))
+
+    # Extrude the surfaces.
+    volume = extrude_mesh_normal_to_surface(
+        cubit,
+        [cubit.surface(i) for i in extrude_surface_ids],
+        0.05,
+        n_layer=1,
+        extrude_dir="outside",
+        average_normals=True,
+    )
+
+    # Check the size of the created volume.
+    assert 0.2473805966079253 == pytest.approx(
         np.abs(cubit.get_meshed_volume_or_area("volume", [volume.id()])), 1e-10
     )
 
