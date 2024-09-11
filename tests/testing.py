@@ -640,16 +640,29 @@ def test_extrude_mesh_function_average_normals_for_cylinder_and_sphere(kwargs):
     # Initialize cubit.
     cubit = CubitPy()
 
-    # Unite a cylinder with a sphere to a toy aneurysm.
+    # Offset between center of cylinder and sphere.
+    offset = 0.8
+
+    # create cylinder and sphere for a toy aneurysm.
     cubit.cmd("create Cylinder height 1 radius 0.5")
     cubit.cmd("create sphere radius 0.4")
-    cubit.cmd("move volume 2 x 0 y 0.8")
-    cubit.cmd("unite volume 1 2")
+    cubit.cmd(f"move volume 2 x 0 y {offset}")
+
+    # Cut volumes into quarter parts.
+    cubit.cmd("webcut volume all  with general plane xy  noimprint nomerge")
+    cubit.cmd("webcut volume all with general plane yz  noimprint nomerge ")
+    cubit.cmd("webcut volume all  with general plane xz  noimprint nomerge")
+    cubit.cmd(
+        f"webcut volume all with general plane xz offset -{offset}  noimprint nomerge "
+    )
+
+    # Unit the desired volumes.
+    cubit.cmd("unite volume 12 8")
 
     # Create mesh for the connected cylinder and sphere surfaces.
-    surface_ids = cubit.get_entities(cupy.geometry.surface)
-    extrude_surface_ids = [surface_ids[-2], surface_ids[-1]]
+    extrude_surface_ids = [115, 113]
     extrude_surface_ids_string = " ".join(map(str, extrude_surface_ids))
+    cubit.cmd("surface {} size auto factor 7".format(extrude_surface_ids_string))
     cubit.cmd("mesh surface {}".format(extrude_surface_ids_string))
 
     # Extrude the surfaces.
@@ -663,7 +676,7 @@ def test_extrude_mesh_function_average_normals_for_cylinder_and_sphere(kwargs):
     )
 
     # Check the size of the created volume.
-    assert 0.2473805966079253 == pytest.approx(
+    assert 0.02668549643643842 == pytest.approx(
         cubit.get_meshed_volume_or_area("volume", [volume.id()]), 1e-10
     )
 
