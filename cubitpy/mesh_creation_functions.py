@@ -217,7 +217,7 @@ def extrude_mesh_normal_to_surface(
                     if (np.linalg.norm(my_normal - other_normal)) > tol_normal:
 
                         # Add normal for average calculation
-                        if average_normals == True:
+                        if average_normals:
                             node_id_pos_normal_map[node_id][1] += my_normal
                         else:
                             raise ValueError(
@@ -235,7 +235,7 @@ def extrude_mesh_normal_to_surface(
     node_ids = list(node_id_pos_normal_map.keys())
     node_ids.sort()
 
-    if average_normals == True:
+    if average_normals:
         # Simply average all previously added normals.
         for value in node_id_pos_normal_map.values():
             value[1] *= 1.0 / np.linalg.norm(value[1])
