@@ -1490,20 +1490,17 @@ def test_extrude_artery_of_aneurysm():
     cubit = CubitPy()
 
     # Set path for geometry.
-    fluent_geometry = os.path.join(
-        '/home/a11bmafr/software/cubitpy/cubitpy/tests/external-geometry',
-        'fluent_aneurysm.msh',
-    )
+    fluent_geometry = os.path.join(testing_external_geometry, "fluent_aneurysm.msh")
 
     # Import aneruysm geometry to cubit.
-    import_fluent_geometry(cubit,fluent_geometry,100)
+    import_fluent_geometry(cubit, fluent_geometry, 100)
 
     # Select wall surface for this case.
-    wall_id=[3]
+    wall_id = [3]
 
     # Remesh the artery surface with hex elements.
-    cubit.cmd('delete mesh')
-    cubit.cmd('mesh surface {}'.format(wall_id[0]))
+    cubit.cmd("delete mesh")
+    cubit.cmd("mesh surface {}".format(wall_id[0]))
 
     # Extrude the surface.
     volume = extrude_mesh_normal_to_surface(
