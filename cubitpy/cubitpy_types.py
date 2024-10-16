@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # -----------------------------------------------------------------------------
-# CubitPy: Utility functions and 4C related functionality for the Cubit and
-#     Coreform python interface
+# CubitPy: Cubit utility functions and a cubit wrapper for python3
 #
 # MIT License
 #
@@ -269,7 +268,6 @@ class BoundaryConditionType(Enum):
     fsi_coupling = auto()
     ale_dirichlet = auto()
 
-
     def get_dat_bc_section_header(self, geometry_type):
         """
         Get the header string for the boundary condition input section in the
@@ -335,7 +333,7 @@ class BoundaryConditionType(Enum):
         elif self == self.periodic_rve_edge and (geometry_type == GeometryType.curve):
             return "DESIGN LINE PERIODIC RVE 2D BOUNDARY CONDITIONS"
         elif self == self.micro_model_boundary_surface and (
-                geometry_type == GeometryType.surface
+            geometry_type == GeometryType.surface
         ):
             return "MICROSCALE CONDITIONS"
         else:
