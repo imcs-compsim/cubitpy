@@ -239,6 +239,10 @@ class ElementType(Enum):
             return "KINEM nonlinear EAS none ANS none THICKDIR auto"
         elif self == self.hex8_fluid:
             return "NA ALE"
+        elif self == self.quad4:
+            return (
+                "KINEM nonlinear EAS none THICK 1.0 STRESS_STRAIN plane_stress GP 2 2"
+            )
         else:
             raise ValueError("Got wrong element type {}!".format(self))
 
@@ -255,6 +259,9 @@ class BoundaryConditionType(Enum):
     solid_to_solid_surface_contact = auto()
     fsi_coupling = auto()
     ale_dirichlet = auto()
+    micro_model_boundary_surface = auto()
+    periodic_rve_edge = auto()
+    line_mortar_contact = auto()
 
     def get_dat_bc_section_header(self, geometry_type):
         """
@@ -306,6 +313,14 @@ class BoundaryConditionType(Enum):
             or geometry_type == FiniteElementObject.node
         ):
             return "DESIGN SURF ALE DIRICH CONDITIONS"
+        elif self == self.line_mortar_contact and (geometry_type == GeometryType.curve):
+            return "DESIGN LINE MORTAR CONTACT CONDITIONS 2D"
+        elif self == self.periodic_rve_edge and (geometry_type == GeometryType.curve):
+            return "DESIGN LINE PERIODIC RVE 2D BOUNDARY CONDITIONS"
+        elif self == self.micro_model_boundary_surface and (
+            geometry_type == GeometryType.surface
+        ):
+            return "MICROSCALE CONDITIONS"
         else:
             raise ValueError(
                 "No implemented case for {} and {}!".format(self, geometry_type)
