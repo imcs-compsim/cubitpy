@@ -358,8 +358,12 @@ class CubitPy(object):
                 raise ValueError("Path {} does not exist!".format(dat_dir))
 
         with open(dat_path, "w") as the_file:
-            for line in cubit_to_dat(self):
+            for line in self.get_dat_lines():
                 the_file.write(line + "\n")
+
+    def get_dat_lines(self):
+        """Return a list with all lines in this input file"""
+        return cubit_to_dat(self)
 
     def group(self, **kwargs):
         """
