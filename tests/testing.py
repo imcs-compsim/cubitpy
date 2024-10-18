@@ -40,6 +40,7 @@ import pytest
 
 # MeshPy imports
 from meshpy_testing.utils import compare_string_tolerance
+from meshpy.rotation import Rotation, rotate_coordinates
 
 # Define the testing paths.
 testing_path = os.path.abspath(os.path.dirname(__file__))
@@ -53,6 +54,7 @@ from cubitpy.mesh_creation_functions import create_brick, extrude_mesh_normal_to
 from cubitpy.geometry_creation_functions import (
     create_spline_interpolation_curve,
     create_parametric_surface,
+    create_brick_by_corner_points,
 )
 from cubitpy.cubit_utility import get_surface_center, import_fluent_geometry
 
@@ -1359,6 +1361,36 @@ def test_spline_interpolation_curve():
 
     assert 0.0 == pytest.approx(np.linalg.norm(coordinates - coordinates_ref), 1e-12)
     assert np.linalg.norm(connectivity - connectivity_ref) == 0
+
+
+def test_create_brick_by_corner_points():
+    """Test the create_brick_by_corner_points and create_surface_by_vertices
+    functions
+    """
+
+    # Set up Cubit.
+    cubit = CubitPy()
+
+    # Create the brick
+    corner_points = np.array(
+        [
+            [0, 0, 0],
+            [0, 0, 1],
+            [0, 2, 1],
+            [0, 1, 0],
+            [1, 0, 0],
+            [1, 0, 1],
+            [1, 1, 1],
+            [1, 1, 0],
+        ],
+        dtype=float,
+    )
+    corner_points = rotate_coordinates(corner_points, Rotation([1, 2, 3], 0.1 * np.pi))
+    brick = create_brick_by_corner_points(cubit, corner_points)
+    cubit.cmd(f"volume {brick.id()} size auto factor 9")
+    brick.mesh()
+    cubit.add_element_type(brick, cupy.element_type.hex8)
+    compare(cubit)
 
 
 def setup_and_check_import_fluent_geometry(
