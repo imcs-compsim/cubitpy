@@ -188,3 +188,54 @@ def create_parametric_surface(
             cubit.cmd("delete curve {}".format(id_string))
 
     return cubit.surface(cubit.get_last_id(cupy.geometry.surface))
+
+
+def create_surface_by_vertices(cubit, vertices):
+    """Create a surface by the bounding vertices
+
+    Args
+    ----
+    cubit: Cubit
+        Link to the main cubit object.
+    vertices: list(Cubit.Vertex)
+        A list of cubit vertices that make up the surface. Be aware that
+        the ordering matters.
+    """
+    vertex_str = " ".join([str(vertex.id()) for vertex in vertices])
+    cubit.cmd(f"create surface vertex {vertex_str}")
+    last_id = cubit.get_last_id("surface")
+    return cubit.surface(last_id)
+
+
+def create_brick_by_corner_points(cubit, corner_points):
+    """Create a brick by its corner points
+
+    Args
+    ----
+    cubit: Cubit
+        Link to the main cubit object.
+    corner_points: list(points in R3)
+        A list or array of points in 3D that make up the brick. The ordering
+        is expected to be the same as for a hex8 finite element.
+    """
+
+    vertices = [
+        cubit.create_vertex(float(vertex[0]), float(vertex[1]), float(vertex[2]))
+        for vertex in corner_points
+    ]
+    surface_vertex_ids = [
+        [0, 1, 2, 3],
+        [4, 5, 6, 7],
+        [1, 2, 6, 5],
+        [2, 6, 7, 3],
+        [0, 3, 7, 4],
+        [0, 1, 5, 4],
+    ]
+    surfaces = [
+        create_surface_by_vertices(cubit, [vertices[id] for id in ids])
+        for ids in surface_vertex_ids
+    ]
+    surface_str = " ".join([str(surface.id()) for surface in surfaces])
+    cubit.cmd(f"create volume surface {surface_str} heal")
+    last_id = cubit.get_last_id("volume")
+    return cubit.volume(last_id)
