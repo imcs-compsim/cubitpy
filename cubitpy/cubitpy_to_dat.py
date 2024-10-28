@@ -222,9 +222,4 @@ def cubit_to_dat(cubit):
             )
             i_element += 1
 
-    # Finish
-    dat_lines.append(
-        "---------------------------------------------------------------END"
-    )
-
     return dat_lines

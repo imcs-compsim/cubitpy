@@ -123,4 +123,3 @@ NODE        80 COORD  2.3677654890466799e+00  2.8842477562477336e+00  3.16501925
        40 SOLID HEX8 57 59 60 58 77 79 80 78 MAT 1 KINEM nonlinear
        41 SOLID HEX8 54 53 60 59 74 73 80 79 MAT 1 KINEM nonlinear
        42 SOLID HEX8 53 55 58 60 73 75 78 80 MAT 1 KINEM nonlinear
----------------------------------------------------------------END

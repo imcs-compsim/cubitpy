@@ -131,4 +131,3 @@ NODE        96 COORD -4.5000000000000001e-01  8.0000000000000004e-01  0.00000000
        32 SOLID HEX8 77 81 91 87 79 82 92 89 MAT 1 KINEM nonlinear
        33 SOLID HEX8 81 83 93 91 82 84 94 92 MAT 1 KINEM nonlinear
        34 SOLID HEX8 83 85 95 93 84 86 96 94 MAT 1 KINEM nonlinear
----------------------------------------------------------------END

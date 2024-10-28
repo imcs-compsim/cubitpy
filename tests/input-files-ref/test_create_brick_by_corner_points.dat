@@ -92,4 +92,3 @@ NODE        64 COORD  1.1302169001596387e+00  1.9314423635158420e-01  8.27831542
        25 SOLID HEX8 42 41 45 46 58 57 61 62 MAT 1 KINEM nonlinear
        26 SOLID HEX8 41 43 47 45 57 59 63 61 MAT 1 KINEM nonlinear
        27 SOLID HEX8 43 44 48 47 59 60 64 63 MAT 1 KINEM nonlinear
----------------------------------------------------------------END

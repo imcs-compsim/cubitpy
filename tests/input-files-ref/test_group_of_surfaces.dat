@@ -47,4 +47,3 @@ NODE        28 COORD  5.0000000000000000e-01  1.0000000000000000e+00  0.00000000
        16 WALL QUAD4 22 21 25 26 MAT 1 KINEM linear EAS none THICK 1.0 STRESS_STRAIN plane_strain GP 3 3
        17 WALL QUAD4 21 23 27 25 MAT 1 KINEM linear EAS none THICK 1.0 STRESS_STRAIN plane_strain GP 3 3
        18 WALL QUAD4 23 24 28 27 MAT 1 KINEM linear EAS none THICK 1.0 STRESS_STRAIN plane_strain GP 3 3
----------------------------------------------------------------END

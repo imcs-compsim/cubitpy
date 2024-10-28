@@ -142,4 +142,3 @@ NODE        72 COORD  5.0000000000000000e-01  2.0000000000000000e+00 -5.00000000
        22 SOLID HEX8 42 45 51 48 64 66 69 67 MAT 1 KINEM nonlinear
        23 SOLID HEX8 49 48 54 55 68 67 70 71 MAT 1 KINEM nonlinear
        24 SOLID HEX8 48 51 57 54 67 69 72 70 MAT 1 KINEM nonlinear
----------------------------------------------------------------END
