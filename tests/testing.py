@@ -743,6 +743,38 @@ def test_contact_condition_surface_to_surface():
     compare(cubit)
 
 
+def test_fluid_functionality():
+    """Test fluid conditions and fluid mesh creation"""
+
+    cubit = CubitPy()
+    fluid = create_brick(
+        cubit,
+        1,
+        1,
+        1,
+        mesh_interval=[1, 1, 1],
+        element_type=cupy.element_type.tet4_fluid,
+    )
+
+    # add inflowrate
+    cubit.add_node_set(
+        fluid.surfaces()[0],
+        name="inflowrate",
+        bc_type=cupy.bc_type.flow_rate,
+        bc_description="1",
+    )
+
+    cubit.add_node_set(
+        fluid.surfaces()[1],
+        name="inflow_stabilization",
+        bc_type=cupy.bc_type.fluid_neumann_inflow_stab,
+        bc_description="1",
+    )
+
+    # Compare the input file created for 4C.
+    compare(cubit)
+
+
 def test_fsi_functionality():
     """Test fsi and ale conditions and fluid mesh creation"""
 

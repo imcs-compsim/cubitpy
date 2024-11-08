@@ -130,6 +130,7 @@ class ElementType(Enum):
     tet10 = auto()
     hex8sh = auto()
     hex8_fluid = auto()
+    tet4_fluid = auto()
     quad4 = auto()
 
     def get_cubit_names(self):
@@ -148,7 +149,7 @@ class ElementType(Enum):
         elif self == self.hex27:
             cubit_scheme = "Auto"
             cubit_element_type = "HEX27"
-        elif self == self.tet4:
+        elif self == self.tet4 or self == self.tet4_fluid:
             cubit_scheme = "Tetmesh"
             cubit_element_type = "TETRA4"
         elif self == self.tet10:
@@ -176,7 +177,7 @@ class ElementType(Enum):
             or self == self.tet4
         ):
             return "SOLID"
-        elif self == self.hex8_fluid:
+        elif self == self.hex8_fluid or self == self.tet4_fluid:
             return "FLUID"
         if self == self.quad4:
             return "WALL"
@@ -186,7 +187,7 @@ class ElementType(Enum):
     def get_four_c_section(self):
         """Get the correct section name of this element in 4C."""
 
-        if self == self.hex8_fluid:
+        if self == self.hex8_fluid or self == self.tet4_fluid:
             return "FLUID"
         elif (
             self == self.hex20
@@ -211,7 +212,7 @@ class ElementType(Enum):
             return "HEX20"
         elif self == self.hex27:
             return "HEX27"
-        elif self == self.tet4:
+        elif self == self.tet4 or self == self.tet4_fluid:
             return "TET4"
         elif self == self.tet10:
             return "TET10"
@@ -237,7 +238,7 @@ class ElementType(Enum):
             return "KINEM nonlinear"
         elif self == self.hex8sh:
             return "KINEM nonlinear EAS none ANS none THICKDIR auto"
-        elif self == self.hex8_fluid:
+        elif self == self.hex8_fluid or self.tet4_fluid:
             return "NA ALE"
         elif self == self.quad4:
             return (
@@ -257,11 +258,16 @@ class BoundaryConditionType(Enum):
     beam_to_solid_surface_meshtying = auto()
     beam_to_solid_surface_contact = auto()
     solid_to_solid_surface_contact = auto()
-    fsi_coupling = auto()
-    ale_dirichlet = auto()
     micro_model_boundary_surface = auto()
     periodic_rve_edge = auto()
     line_mortar_contact = auto()
+
+    # fluid
+    flow_rate = auto()
+    fluid_neumann_inflow_stab = auto()
+    fsi_coupling = auto()
+    ale_dirichlet = auto()
+
 
     def get_dat_bc_section_header(self, geometry_type):
         """
@@ -313,12 +319,22 @@ class BoundaryConditionType(Enum):
             or geometry_type == FiniteElementObject.node
         ):
             return "DESIGN SURF ALE DIRICH CONDITIONS"
+        elif self == self.flow_rate and (geometry_type == GeometryType.surface):
+            return "DESIGN FLOW RATE SURF CONDITIONS"
+        elif self == self.fluid_neumann_inflow_stab and (
+            geometry_type == GeometryType.surface
+        ):
+            return "FLUID NEUMANN INFLOW SURF CONDITIONS"
+        elif self == self.fluid_neumann_inflow_stab and (
+            geometry_type == GeometryType.curve
+        ):
+            return "FLUID NEUMANN INFLOW LINE CONDITIONS"
         elif self == self.line_mortar_contact and (geometry_type == GeometryType.curve):
             return "DESIGN LINE MORTAR CONTACT CONDITIONS 2D"
         elif self == self.periodic_rve_edge and (geometry_type == GeometryType.curve):
             return "DESIGN LINE PERIODIC RVE 2D BOUNDARY CONDITIONS"
         elif self == self.micro_model_boundary_surface and (
-            geometry_type == GeometryType.surface
+                geometry_type == GeometryType.surface
         ):
             return "MICROSCALE CONDITIONS"
         else:
