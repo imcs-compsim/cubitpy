@@ -312,7 +312,7 @@ class BoundaryConditionType(Enum):
         ):
             return "DESIGN SURF ALE DIRICH CONDITIONS"
         elif self == self.flow_rate and (geometry_type == GeometryType.surface):
-            return "DESIGN SURF DIRICH CONDITIONS"
+            return "DESIGN FLOW RATE SURF CONDITIONS"
         elif self == self.fluid_neumann_inflow_stab and (
             geometry_type == GeometryType.surface
         ):
