@@ -200,7 +200,7 @@ def cubit_step_by_step_tutorial_cli(
 
     # Set the head string.
     cubit.head = """
-    -------------------------------------------------------------------PROBLEM TYP
+    ------------------------------------------------------------------PROBLEM TYPE
     PROBLEMTYP                      Structure
     ----------------------------------------------------------------------------IO
     OUTPUT_BIN                      no
