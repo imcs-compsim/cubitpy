@@ -32,7 +32,7 @@ jobs:
           . ${SPACK_ACTIVATION_SCRIPT}
           spack load python@3.12.1
           # Create the virtual environment
-          python3 -m venv $PYTHON_VENV
+          python -m venv $PYTHON_VENV
           source $PYTHON_VENV/bin/activate
           # Update pip
           pip install --upgrade pip

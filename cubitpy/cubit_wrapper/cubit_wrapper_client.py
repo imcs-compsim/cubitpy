@@ -122,7 +122,7 @@ channel.send(object_to_id(cubit))
 
 # Now start an endless loop (until None is sent) and perform the cubit functions
 while 1:
-    # Get input from python3.
+    # Get input from the python host.
     receive = channel.receive()
 
     # If None is sent, break the connection and exit
@@ -250,7 +250,7 @@ while 1:
                 "The id {} is not in the cubit_objects dictionary".format(cubit_id)
             )
 
-        # Return to python3
+        # Return to python host
         channel.send(None)
 
     else:

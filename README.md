@@ -35,7 +35,7 @@ sudo apt-get install python3-venv python3-dev
 
 Now a virtual environment can be created (chose an appropriate directory for this, e.g., `/home/user/opt`)
 ```bash
-python3 -m venv cubitpy-env
+python -m venv cubitpy-env
 ```
 
 The created virtual environment can be loaded with
