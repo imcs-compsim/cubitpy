@@ -22,7 +22,7 @@ description = "CubitPy: Utility functions for the cubit python interface"
 readme = "README.md"
 license = {file = "LICENSE"}
 dependencies = [
-  "black",
+  "black==22.12.0",
   "execnet==1.9.0",
   "netCDF4",
   "numpy"
