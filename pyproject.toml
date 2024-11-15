@@ -18,7 +18,7 @@ name = "CubitPy"
 authors = [
   {name = "Ivo Steinbrecher", email = "ivo.steinbrecher@unibw.de"},
 ]
-description = "CubitPy: Utility functions for the cubit python interface"
+description = "CubitPy: Utility functions and 4C related functionality for the Cubit and Coreform python interface"
 readme = "README.md"
 license = {file = "LICENSE"}
 dependencies = [

@@ -1,5 +1,6 @@
 # -----------------------------------------------------------------------------
-# CubitPy: Cubit utility functions and a cubit wrapper for python3
+# CubitPy: Utility functions and 4C related functionality for the Cubit and
+#     Coreform python interface
 #
 # MIT License
 #
