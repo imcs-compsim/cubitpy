@@ -6,11 +6,6 @@
 # coverage report
 */htmlcov/*
 
-# eclipse stuff
-*.project
-*.pydevproject
-*.settings*
-
 # testing folder
 */testing-tmp
 
