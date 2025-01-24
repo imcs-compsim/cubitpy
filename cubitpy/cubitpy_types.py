@@ -78,6 +78,7 @@ class FiniteElementObject(Enum):
 
     hex = auto()
     tet = auto()
+    wedge = auto()
     face = auto()
     triangle = auto()
     edge = auto()
@@ -90,6 +91,8 @@ class FiniteElementObject(Enum):
             return "hex"
         elif self == self.tet:
             return "tet"
+        elif self == self.wedge:
+            return "wedge"
         elif self == self.face:
             return "face"
         elif self == self.triangle:
@@ -133,6 +136,7 @@ class ElementType(Enum):
     hex8_scatra = auto()
     tet4_scatra = auto()
     quad4 = auto()
+    wedge6 = auto()
 
     def get_cubit_names(self):
         """Get the strings that are needed to mesh and describe this element in
@@ -168,6 +172,9 @@ class ElementType(Enum):
         elif self == self.quad4:
             cubit_scheme = "Auto"
             cubit_element_type = "QUAD4"
+        elif self == self.wedge6:
+            cubit_scheme = "Auto"
+            cubit_element_type = "wedge6"
         else:
             raise ValueError("Got wrong element type {}!".format(self))
 
@@ -185,6 +192,7 @@ class ElementType(Enum):
             or self == self.hex27
             or self == self.tet10
             or self == self.tet4
+            or self == self.wedge6
         ):
             return "SOLID"
         elif self == self.hex8_fluid or self == self.tet4_fluid:
@@ -212,6 +220,7 @@ class ElementType(Enum):
             or self == self.hex8sh
             or self == self.tet10
             or self == self.quad4
+            or self == self.wedge6
         ):
             return "STRUCTURE"
         elif self == self.hex8_thermo or self == self.tet4_thermo:
@@ -247,6 +256,8 @@ class ElementType(Enum):
             return "TET10"
         elif self == self.quad4:
             return "QUAD4"
+        elif self == self.wedge6:
+            return "WEDGE6"
         else:
             raise ValueError("Got wrong element type {}!".format(self))
 
@@ -261,6 +272,7 @@ class ElementType(Enum):
             or self == self.hex27
             or self == self.tet4
             or self == self.tet10
+            or self == self.wedge6
         ):
             return "KINEM nonlinear"
         elif self == self.hex8sh:
