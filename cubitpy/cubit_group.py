@@ -158,6 +158,7 @@ class CubitGroup(object):
         elif (
             key == cupy.finite_element_object.tet
             or key == cupy.finite_element_object.hex
+            or key == cupy.finite_element_object.wedge
         ):
             return cupy.geometry.volume
         else:
@@ -195,6 +196,8 @@ class CubitGroup(object):
             return self.cubit.get_group_tets(self._id)
         elif item_type == cupy.finite_element_object.hex:
             return self.cubit.get_group_hexes(self._id)
+        elif item_type == cupy.finite_element_object.wedge:
+            return self.cubit.get_group_wedges(self._id)
 
         # Cubit items.
         elif item_type == cupy.cubit_items.group:
