@@ -25,7 +25,7 @@ import os
 import unittest
 
 from cubitpy_tutorial import cubit_step_by_step_tutorial_cli
-from testing import compare, testing_temp
+from test_all import compare, testing_temp
 
 from cubitpy import CubitPy
 
