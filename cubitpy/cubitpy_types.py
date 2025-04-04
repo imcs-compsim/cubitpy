@@ -163,8 +163,8 @@ class ElementType(Enum):
             cubit_scheme = "Auto"
             cubit_element_type = "QUAD4"
         elif self == self.wedge6:
-            cubit_scheme = "Auto"
-            cubit_element_type = "wedge6"
+            cubit_scheme = "Sweep"
+            cubit_element_type = "WEDGE6"
         else:
             raise ValueError("Got wrong element type {}!".format(self))
 

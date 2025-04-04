@@ -304,6 +304,44 @@ def test_create_block_multiple():
     create_block(cubit_2)
 
 
+def test_create_wedge6():
+    """Create a mesh with wedge elements."""
+    # Initialize cubit.
+    cubit = CubitPy()
+    
+    # Create nodes to define two tri elements
+    for x in [-0.5, 0.5]:
+        for y in [-0.5, 0.5]:
+            cubit.cmd("create node location {} {} 0.5".format(x, y))
+    
+    # Create tri elements
+    cubit.cmd("create tri node 1 2 3")
+    cubit.cmd("create tri node 3 2 4")
+
+    # By offseting the tri elements, create wedge elements
+    cubit.cmd("create element offset tri 1 2 distance 0.6 layers 1")
+    
+    # Define a group formed by wedge elements
+    wedge_group = cubit.group(add_value="add wedge all")
+
+    # Define the element type of the group
+    cubit.add_element_type(
+            wedge_group, 
+            cupy.element_type.wedge6, 
+            name="wedges", 
+            material="MAT 1",
+            bc_description=None,
+            )
+
+    # I don't get why is this necessary if I already defined the group and the element type
+    # Maybe there is an error for the recognition of the wedge_group
+    cubit.cmd("block 1 element type WEDGE6")
+    cubit.cmd("block 1 add group 2")
+
+    # Compare the input file created for 4C.
+    compare(cubit, name="test_create_wedge6")
+
+
 def create_element_types_tet(cubit, element_type_list, name):
     """Create a curved solid with different tet element types."""
 
