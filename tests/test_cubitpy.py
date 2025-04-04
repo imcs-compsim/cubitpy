@@ -304,6 +304,44 @@ def test_create_block_multiple():
     create_block(cubit_2)
 
 
+def test_create_wedge6():
+    """Create a mesh with wedge elements."""
+    # Initialize cubit.
+    cubit = CubitPy()
+
+    # Create nodes to define two tri elements
+    for x in [-0.5, 0.5]:
+        for y in [-0.5, 0.5]:
+            cubit.cmd("create node location {} {} 0.5".format(x, y))
+
+    # Create tri elements
+    cubit.cmd("create tri node 1 2 3")
+    cubit.cmd("create tri node 3 2 4")
+
+    # By offsetting the tri elements, create wedge elements
+    cubit.cmd("create element offset tri 1 2 distance 0.6 layers 1")
+
+    # Define a group formed by wedge elements
+    wedge_group = cubit.group(add_value="add wedge all")
+
+    # Check that we can get the element IDs in the group
+    assert [1, 2] == wedge_group.get_item_ids_from_type(
+        cupy.finite_element_object.wedge
+    )
+
+    # Define the element type of the group
+    cubit.add_element_type(
+        wedge_group,
+        cupy.element_type.wedge6,
+        name="wedges",
+        material="MAT 1",
+        bc_description=None,
+    )
+
+    # Compare the input file created for 4C
+    compare(cubit)
+
+
 def create_element_types_tet(cubit, element_type_list, name):
     """Create a curved solid with different tet element types."""
 
