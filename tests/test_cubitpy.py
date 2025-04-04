@@ -324,6 +324,11 @@ def test_create_wedge6():
     # Define a group formed by wedge elements
     wedge_group = cubit.group(add_value="add wedge all")
 
+    # Check that we can get the element IDs in the group
+    assert [1, 2] == wedge_group.get_item_ids_from_type(
+        cupy.finite_element_object.wedge
+    )
+
     # Define the element type of the group
     cubit.add_element_type(
         wedge_group,
@@ -333,13 +338,8 @@ def test_create_wedge6():
         bc_description=None,
     )
 
-    # I don't get why is this necessary if I already defined the group and the element type
-    # Maybe there is an error for the recognition of the wedge_group
-    cubit.cmd("block 1 element type WEDGE6")
-    cubit.cmd("block 1 add group 2")
-
-    # Compare the input file created for 4C.
-    compare(cubit, name="test_create_wedge6")
+    # Compare the input file created for 4C
+    compare(cubit)
 
 
 def create_element_types_tet(cubit, element_type_list, name):

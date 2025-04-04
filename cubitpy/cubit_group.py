@@ -270,7 +270,7 @@ class CubitGroup(object):
         group_items = self.get_item_ids()
         cubit_scheme, cubit_element_type = el_type.get_cubit_names()
 
-        # Add geometry to block.
+        # Set element type and meshing scheme for each geometry item in the group.
         for i in group_items[self_geometry]:
             self.cubit.cmd(
                 "{} {} scheme {}".format(
@@ -278,16 +278,10 @@ class CubitGroup(object):
                 )
             )
             self.cubit.cmd(
-                "block {} {} {}".format(block_id, self_geometry.get_cubit_string(), i)
-            )
-            self.cubit.cmd(
                 "block {} element type {}".format(block_id, cubit_element_type)
             )
 
-        # Add explicit elements to block.
-        if cubit_element_type == "HEX8":
-            for i in group_items[cupy.finite_element_object.hex]:
-                self.cubit.cmd("block {} hex {}".format(block_id, i))
+        self.cubit.cmd(f"block {block_id} add group {self._id}")
 
     def add_to_nodeset(self, nodeset_id):
         """Add the nodes from this geometry to a node set.
