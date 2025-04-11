@@ -26,10 +26,11 @@ import subprocess  # nosec B404
 import time
 import warnings
 
-from .conf import cupy
-from .cubit_group import CubitGroup
-from .cubit_wrapper.cubit_wrapper_host import CubitConnect
-from .cubitpy_to_dat import cubit_to_dat
+from cubitpy.conf import cupy
+from cubitpy.cubit_group import CubitGroup
+from cubitpy.cubit_wrapper.cubit_wrapper_host import CubitConnect
+from cubitpy.cubitpy_to_dat import cubit_to_dat
+from cubitpy.utils import get_geometry_type
 
 
 class CubitPy(object):
@@ -152,7 +153,7 @@ class CubitPy(object):
             )
 
         # Get element type of item.
-        geometry_type = item.get_geometry_type()
+        geometry_type = get_geometry_type(item)
 
         self.cubit.cmd("create block {}".format(n_blocks + 1))
 
@@ -239,7 +240,7 @@ class CubitPy(object):
 
         # Get element type of item if it was not explicitly given.
         if geometry_type is None:
-            geometry_type = item.get_geometry_type()
+            geometry_type = get_geometry_type(item)
 
         self.cubit.cmd("create nodeset {}".format(n_node_sets + 1))
         if not isinstance(item, CubitGroup):
@@ -304,7 +305,7 @@ class CubitPy(object):
         """
 
         # Check if item is line.
-        if not item.get_geometry_type() == cupy.geometry.curve:
+        if not get_geometry_type(item) == cupy.geometry.curve:
             raise TypeError("Expected line, got {}".format(type(item)))
         self.cubit.cmd("curve {} interval {} scheme equal".format(item.id(), n_el))
 
