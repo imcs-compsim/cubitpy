@@ -7,38 +7,38 @@ MATERIALS:
 DESIGN POINT DIRICH CONDITIONS:
   - E: 1
     NUMDOF: 3
-    ONOFF: [1,1,1]
-    VAL: [0,0,0]
-    FUNCT: [0,0,1]
+    ONOFF: [1, 1, 1]
+    VAL: [0, 0, 0]
+    FUNCT: [0, 0, 1]
 DESIGN LINE NEUMANN CONDITIONS:
   - E: 1
     NUMDOF: 3
-    ONOFF: [1,1,1]
-    VAL: [0,0,0]
-    FUNCT: [0,0,2]
+    ONOFF: [1, 1, 1]
+    VAL: [0, 0, 0]
+    FUNCT: [0, 0, 2]
 DESIGN SURF DIRICH CONDITIONS:
   - E: 1
     NUMDOF: 3
-    ONOFF: [1,1,1]
-    VAL: [0,0,0]
-    FUNCT: [0,0,3]
+    ONOFF: [1, 1, 1]
+    VAL: [0, 0, 0]
+    FUNCT: [0, 0, 3]
 DESIGN VOL NEUMANN CONDITIONS:
   - E: 1
     NUMDOF: 3
-    ONOFF: [1,1,1]
-    VAL: [0,0,0]
-    FUNCT: [0,0,4]
+    ONOFF: [1, 1, 1]
+    VAL: [0, 0, 0]
+    FUNCT: [0, 0, 4]
 DESIGN POINT NEUMANN CONDITIONS:
   - E: 2
     NUMDOF: 3
-    ONOFF: [1,1,1]
-    VAL: [0,0,0]
-    FUNCT: [0,0,4]
+    ONOFF: [1, 1, 1]
+    VAL: [0, 0, 0]
+    FUNCT: [0, 0, 4]
   - E: 3
     NUMDOF: 3
-    ONOFF: [1,1,1]
-    VAL: [0,0,0]
-    FUNCT: [0,0,4]
+    ONOFF: [1, 1, 1]
+    VAL: [0, 0, 0]
+    FUNCT: [0, 0, 4]
 BEAM INTERACTION/BEAM TO SOLID VOLUME MESHTYING VOLUME:
   - E: 2
     COUPLING_ID: 1

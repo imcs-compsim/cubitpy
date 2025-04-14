@@ -7,15 +7,15 @@ MATERIALS:
 DESIGN VOL DIRICH CONDITIONS:
   - E: 1
     NUMDOF: 3
-    ONOFF: [1,1,1]
-    VAL: [0,0,0]
-    FUNCT: [0,0,0]
+    ONOFF: [1, 1, 1]
+    VAL: [0, 0, 0]
+    FUNCT: [0, 0, 0]
 DESIGN VOL NEUMANN CONDITIONS:
   - E: 2
     NUMDOF: 3
-    ONOFF: [0,0,1]
-    VAL: [0,0,1]
-    FUNCT: [0,0,0]
+    ONOFF: [0, 0, 1]
+    VAL: [0, 0, 1]
+    FUNCT: [0, 0, 0]
 DVOL-NODE TOPOLOGY:
   - NODE 1 DVOL 1
   - NODE 2 DVOL 1

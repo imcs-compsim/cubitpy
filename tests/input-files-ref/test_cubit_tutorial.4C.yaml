@@ -40,15 +40,15 @@ FUNCT1:
 DESIGN SURF DIRICH CONDITIONS:
   - E: 1
     NUMDOF: 3
-    ONOFF: [1,1,1]
-    VAL: [0,0,0]
-    FUNCT: [0,0,0]
+    ONOFF: [1, 1, 1]
+    VAL: [0, 0, 0]
+    FUNCT: [0, 0, 0]
 DESIGN SURF NEUMANN CONDITIONS:
   - E: 2
     NUMDOF: 3
-    ONOFF: [0,1,0]
-    VAL: [0,0.1,0]
-    FUNCT: [0,1,0]
+    ONOFF: [0, 1, 0]
+    VAL: [0, 0.1, 0]
+    FUNCT: [0, 1, 0]
 DSURF-NODE TOPOLOGY:
   - NODE 18 DSURFACE 1
   - NODE 20 DSURFACE 1

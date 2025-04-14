@@ -1,43 +1,43 @@
 DESIGN POINT COUPLING CONDITIONS:
   - E: 1
     NUMDOF: 3
-    ONOFF: [1,1,1]
+    ONOFF: [1, 1, 1]
   - E: 2
     NUMDOF: 3
-    ONOFF: [1,1,1]
+    ONOFF: [1, 1, 1]
   - E: 3
     NUMDOF: 3
-    ONOFF: [1,1,1]
+    ONOFF: [1, 1, 1]
   - E: 4
     NUMDOF: 3
-    ONOFF: [1,1,1]
+    ONOFF: [1, 1, 1]
   - E: 5
     NUMDOF: 3
-    ONOFF: [1,1,1]
+    ONOFF: [1, 1, 1]
   - E: 6
     NUMDOF: 3
-    ONOFF: [1,1,1]
+    ONOFF: [1, 1, 1]
   - E: 7
     NUMDOF: 3
-    ONOFF: [1,1,1]
+    ONOFF: [1, 1, 1]
   - E: 8
     NUMDOF: 3
-    ONOFF: [1,1,1]
+    ONOFF: [1, 1, 1]
   - E: 9
     NUMDOF: 3
-    ONOFF: [1,1,1]
+    ONOFF: [1, 1, 1]
   - E: 10
     NUMDOF: 3
-    ONOFF: [1,2,3]
+    ONOFF: [1, 2, 3]
   - E: 11
     NUMDOF: 3
-    ONOFF: [1,2,3]
+    ONOFF: [1, 2, 3]
   - E: 12
     NUMDOF: 3
-    ONOFF: [1,2,3]
+    ONOFF: [1, 2, 3]
   - E: 13
     NUMDOF: 3
-    ONOFF: [1,2,3]
+    ONOFF: [1, 2, 3]
 DNODE-NODE TOPOLOGY:
   - NODE 26 DNODE 1
   - NODE 58 DNODE 1
