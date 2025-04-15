@@ -26,10 +26,10 @@ import subprocess  # nosec B404
 import time
 import warnings
 
-from .conf import cupy
-from .cubit_group import CubitGroup
-from .cubit_wrapper.cubit_wrapper_host import CubitConnect
-from .cubitpy_to_dat import cubit_to_dat
+from cubitpy.conf import cupy
+from cubitpy.cubit_group import CubitGroup
+from cubitpy.cubit_wrapper.cubit_wrapper_host import CubitConnect
+from cubitpy.cubitpy_to_dat import cubit_to_dat
 
 
 class CubitPy(object):

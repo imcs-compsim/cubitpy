@@ -28,8 +28,8 @@ import os
 import execnet
 import numpy as np
 
-from ..conf import cupy
-from .cubit_wrapper_utility import cubit_item_to_id, is_base_type
+from cubitpy.conf import cupy
+from cubitpy.cubit_wrapper.cubit_wrapper_utility import cubit_item_to_id, is_base_type
 
 
 class CubitConnect(object):

@@ -19,16 +19,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-"""This module contains extensions and utility functions for the cubit python
-interface."""
-
-from .conf import cupy
-from .cubitpy import CubitPy
-
-# Define the items that will be exported by default.
-__all__ = [
-    # cubit options.
-    "cupy",
-    # Cubit objects.
-    "CubitPy",
-]
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+"""This module contains extensions and utility functions for the cubit
+tutorial."""

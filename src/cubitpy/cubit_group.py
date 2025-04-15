@@ -21,8 +21,8 @@
 # THE SOFTWARE.
 """This file contains a class to represent groups in cubit."""
 
-from .conf import cupy
-from .cubit_wrapper.cubit_wrapper_host import CubitObject
+from cubitpy.conf import cupy
+from cubitpy.cubit_wrapper.cubit_wrapper_host import CubitObject
 
 
 class CubitGroup(object):

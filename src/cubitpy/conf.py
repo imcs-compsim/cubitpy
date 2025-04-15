@@ -28,7 +28,7 @@ import os
 import shutil
 from sys import platform
 
-from .cubitpy_types import (
+from cubitpy.cubitpy_types import (
     BoundaryConditionType,
     CubitItems,
     ElementType,

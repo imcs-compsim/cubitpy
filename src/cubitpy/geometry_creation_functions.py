@@ -21,7 +21,7 @@
 # THE SOFTWARE.
 """Implements functions that create geometries in cubit."""
 
-from . import cupy
+from cubitpy.conf import cupy
 
 
 def create_spline_interpolation_curve(cubit, vertices, *, delete_points=True):

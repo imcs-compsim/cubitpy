@@ -23,7 +23,7 @@
 
 import numpy as np
 
-from . import cupy
+from cubitpy.conf import cupy
 
 
 def create_brick(

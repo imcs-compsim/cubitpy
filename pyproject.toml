@@ -1,17 +1,10 @@
 [build-system]
 requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages = [
-  "cubitpy",
-  "cubitpy.cubit_wrapper",
-  "cubitpy_testing",
-  "cubitpy_tutorial"
-]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
-[tool.setuptools.package-dir]
-cubitpy_testing = "tests"
-cubitpy_tutorial = "tutorial"
 
 [project]
 name = "CubitPy"
@@ -20,7 +13,7 @@ authors = [
 ]
 description = "CubitPy: Utility functions and 4C related functionality for the Cubit and Coreform python interface"
 readme = "README.md"
-license = {file = "LICENSE"}
+license = "MIT"
 dependencies = [
   "execnet==1.9.0",
   "netCDF4",
@@ -29,7 +22,7 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-CI-CD = [
+dev = [
   "coverage",
   "coverage-badge",
   "setuptools", # Needed for coverage-badge

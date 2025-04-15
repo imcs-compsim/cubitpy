@@ -13,6 +13,8 @@
 */__pycache__
 cubitpy.egg-info/*
 *-wheel-metadata/*
+*/CubitPy.egg-info/*
+CubitPy.egg-info/
 
 # Test file
 test.py

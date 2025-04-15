@@ -27,7 +27,7 @@ import os
 import netCDF4
 import numpy as np
 
-from .conf import cupy
+from cubitpy.conf import cupy
 
 
 def add_node_sets(dat_lines, cubit, exo):

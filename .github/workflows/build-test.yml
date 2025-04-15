@@ -37,7 +37,7 @@ jobs:
           # Update pip
           pip install --upgrade pip
           # Install cubitpy
-          pip install .[CI-CD]
+          pip install .[dev]
           # Print information on the python environment
           python --version
           pip list
