@@ -27,5 +27,8 @@ dev = [
   "coverage-badge",
   "setuptools", # Needed for coverage-badge
   "pre-commit",
-  "pytest"
+  "pytest",
+  "pyyaml",
+  "deepdiff",
+  "fourcipp @ git+https://github.com/4C-multiphysics/fourcipp.git@main"
 ]

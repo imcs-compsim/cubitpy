@@ -1,9 +1,9 @@
 FUNCT1:
-  - SYMBOLIC_FUNCTION_OF_TIME: "t"
+  - SYMBOLIC_FUNCTION_OF_TIME: t
 MATERIALS:
   - MAT: 1
     MAT_Struct_StVenantKirchhoff:
-      YOUNG: 1e+09
+      YOUNG: 1.0e+09
       NUE: 0.3
       DENS: 0
 IO/RUNTIME VTK OUTPUT/STRUCTURE:
