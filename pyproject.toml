@@ -2,12 +2,8 @@
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-
-
 [project]
-name = "CubitPy"
+name = "cubitpy"
 authors = [
   {name = "Ivo Steinbrecher", email = "ivo.steinbrecher@unibw.de"},
 ]
@@ -19,7 +15,11 @@ dependencies = [
   "netCDF4",
   "numpy"
 ]
-dynamic = ["version"]
+version = "0.0.1"
+
+[project.urls]
+Repository = "https://github.com/imcs-compsim/cubitpy/"
+Issues = "https://github.com/imcs-compsim/cubitpy/issues/"
 
 [project.optional-dependencies]
 dev = [
@@ -29,3 +29,6 @@ dev = [
   "pre-commit",
   "pytest"
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
