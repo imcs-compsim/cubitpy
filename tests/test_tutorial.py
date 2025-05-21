@@ -22,27 +22,16 @@
 """This script is used to test the tutorial."""
 
 import os
-import unittest
 
-from test_cubitpy import compare, testing_temp
+from test_cubitpy import compare_yaml, testing_temp
 
 from cubitpy import CubitPy
 from tutorial.tutorial import cubit_step_by_step_tutorial_cli
 
 
-class TestTutorial(unittest.TestCase):
-    """This class tests the tutorials in the repository."""
-
-    def test_tutorial(self):
-        """Test that the tutorial works."""
-        cubit = CubitPy()
-        tutorial_file = os.path.join(testing_temp, "tutorial.dat")
-        cubit_step_by_step_tutorial_cli(
-            tutorial_file, display=False, cubit=cubit, size=5.0
-        )
-        compare(cubit, name="test_cubit_tutorial")
-
-
-if __name__ == "__main__":
-    # Execution part of script.
-    unittest.main()
+def test_cubit_tutorial():
+    """Test that the tutorial works."""
+    cubit = CubitPy()
+    tutorial_file = os.path.join(testing_temp, "tutorial.dat")
+    cubit_step_by_step_tutorial_cli(tutorial_file, display=False, cubit=cubit, size=5.0)
+    compare_yaml(cubit)

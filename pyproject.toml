@@ -13,7 +13,8 @@ license = "MIT"
 dependencies = [
   "execnet==1.9.0",
   "netCDF4",
-  "numpy"
+  "numpy",
+  "fourcipp @ git+https://github.com/4C-multiphysics/fourcipp.git@main"
 ]
 version = "0.0.1"
 
@@ -25,7 +26,8 @@ Issues = "https://github.com/imcs-compsim/cubitpy/issues/"
 dev = [
   "pre-commit",
   "pytest",
-  "pytest-cov"
+  "pytest-cov",
+  "deepdiff",
 ]
 
 [tool.pytest.ini_options]

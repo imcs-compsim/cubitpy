@@ -30,7 +30,7 @@ import numpy as np
 from cubitpy.conf import cupy
 
 
-def add_node_sets(dat_lines, cubit, exo):
+def add_node_sets(cubit, exo, input_file):
     """Add the node sets contained in the cubit session/exo file to the
     dat_lines."""
 
@@ -65,51 +65,39 @@ def add_node_sets(dat_lines, cubit, exo):
         boundary_condition_map[bc_key].append(
             [len(node_sets[geometry_type]), bc_description, names[i_set]]
         )
+        if bc_section not in input_file.inlined.keys():
+            input_file[bc_section] = []
+        bc_description["E"] = len(node_sets[geometry_type])
 
-    # Write the boundary conditions
-    for (bc_section, geo), item in boundary_condition_map.items():
-        dat_lines.append("-" * 40 + bc_section)
-        for set_id, bc_description, name in item:
-            if not name == "":
-                dat_lines.append(f"// {name}")
-            dat_lines.append(f"E {set_id} {bc_description}")
+        input_file[bc_section].append(bc_description)
 
     name_geometry_tuple = [
-        [
-            cupy.geometry.vertex,
-            "-----------------------------------------------DNODE-NODE TOPOLOGY",
-            "DNODE",
-        ],
-        [
-            cupy.geometry.curve,
-            "-----------------------------------------------DLINE-NODE TOPOLOGY",
-            "DLINE",
-        ],
-        [
-            cupy.geometry.surface,
-            "-----------------------------------------------DSURF-NODE TOPOLOGY",
-            "DSURFACE",
-        ],
-        [
-            cupy.geometry.volume,
-            "-----------------------------------------------DVOL-NODE TOPOLOGY",
-            "DVOL",
-        ],
+        [cupy.geometry.vertex, "DNODE-NODE TOPOLOGY", "DNODE"],
+        [cupy.geometry.curve, "DLINE-NODE TOPOLOGY", "DLINE"],
+        [cupy.geometry.surface, "DSURF-NODE TOPOLOGY", "DSURFACE"],
+        [cupy.geometry.volume, "DVOL-NODE TOPOLOGY", "DVOL"],
     ]
     for geo, section_name, set_label in name_geometry_tuple:
         if len(node_sets[geo]) > 0:
-            dat_lines.append(section_name)
+            input_file[section_name] = []
             for i_set, node_set in enumerate(node_sets[geo]):
                 node_set.sort()
                 for i_node in node_set:
-                    dat_lines.append(f"NODE {i_node:6d} {set_label} {i_set+1}")
+                    input_file[section_name].append(
+                        {
+                            "type": "NODE",
+                            "node_id": i_node,
+                            "d_type": set_label,
+                            "d_id": i_set + 1,
+                        }
+                    )
 
 
-def get_element_connectivity_string(connectivity):
-    """Return the connectivity string for an element.
+def get_element_connectivity_list(connectivity):
+    """Return the connectivity list for an element.
 
     For hex27 we need a different ordering than the one we get from
-    cubit
+    cubit.
     """
 
     if len(connectivity) == 27:
@@ -143,14 +131,15 @@ def get_element_connectivity_string(connectivity):
             22,
             20,
         ]
-        return " ".join([f"{item:d}" for item in connectivity[ordering]])
+        return [connectivity[i] for i in ordering]
     else:
         # all other elements
-        return " ".join([f"{item:d}" for item in connectivity])
+        return connectivity.tolist()
 
 
-def cubit_to_dat(cubit):
-    """Convert a CubitPy session to a dat file that can be read with 4C."""
+def get_input_file_with_mesh(cubit):
+    """Return a copy of cubit.fourc_input with mesh data (nodes and elements)
+    added."""
 
     # Create exodus file
     os.makedirs(cupy.temp_dir, exist_ok=True)
@@ -158,19 +147,13 @@ def cubit_to_dat(cubit):
     cubit.export_exo(exo_path)
     exo = netCDF4.Dataset(exo_path)
 
-    dat_lines = []
-
-    # Add the header
-    for line in cubit.head.split("\n"):
-        dat_lines.append(line.strip())
-
+    # create a deep copy of the input_file
+    input_file = cubit.fourc_input.copy()
     # Add the node sets
-    add_node_sets(dat_lines, cubit, exo)
+    add_node_sets(cubit, exo, input_file)
 
     # Add the nodal data
-    dat_lines.append(
-        "-------------------------------------------------------NODE COORDS"
-    )
+    input_file["NODE COORDS"] = []
     if "coordz" in exo.variables:
         coordinates = np.array(
             [exo.variables["coord" + dim][:] for dim in ["x", "y", "z"]],
@@ -180,28 +163,36 @@ def cubit_to_dat(cubit):
         temp.append([0 for i in range(len(temp[0]))])
         coordinates = np.array(temp).transpose()
     for i, coordinate in enumerate(coordinates):
-        dat_lines.append(
-            f"NODE {i+1:9d} COORD {coordinate[0]: .16e} {coordinate[1]: .16e} {coordinate[2]: .16e}"
+        input_file["NODE COORDS"].append(
+            {
+                "COORD": [coordinate[0], coordinate[1], coordinate[2]],
+                "data": {"type": "NODE"},
+                "id": i + 1,
+            }
         )
 
     # Add the element connectivity
-    current_section = None
     connectivity_keys = [key for key in exo.variables.keys() if "connect" in key]
     connectivity_keys.sort()
     i_element = 0
     for i_block, key in enumerate(connectivity_keys):
-        ele_type, block_string = cubit.blocks[i_block]
-        block_section = ele_type.get_four_c_section()
-        if not block_section == current_section:
-            current_section = block_section
-            dat_lines.append(
-                f"------------------------------------------------{current_section} ELEMENTS"
-            )
+        ele_type, block_dict = cubit.blocks[i_block]
+        block_section = f"{ele_type.get_four_c_section()} ELEMENTS"
+        if block_section not in input_file.sections.keys():
+            input_file[block_section] = []
         for connectivity in exo.variables[key][:]:
-            connectivity_string = get_element_connectivity_string(connectivity)
-            dat_lines.append(
-                f"{i_element+1:9d} {ele_type.get_four_c_name()} {ele_type.get_four_c_type()} {connectivity_string} {block_string}"
+            input_file[block_section].append(
+                {
+                    "id": i_element + 1,
+                    "cell": {
+                        "connectivity": get_element_connectivity_list(connectivity),
+                        "type": ele_type.get_four_c_type(),
+                    },
+                    "data": {
+                        "type": ele_type.get_four_c_name(),
+                        **block_dict,
+                    },
+                }
             )
             i_element += 1
-
-    return dat_lines
+    return input_file
