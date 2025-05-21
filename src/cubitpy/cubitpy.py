@@ -26,10 +26,12 @@ import subprocess  # nosec B404
 import time
 import warnings
 
+from fourcipp.fourc_input import FourCInput
+
 from cubitpy.conf import cupy
 from cubitpy.cubit_group import CubitGroup
+from cubitpy.cubit_to_fourc_input import get_input_file_with_mesh
 from cubitpy.cubit_wrapper.cubit_wrapper_host import CubitConnect
-from cubitpy.cubitpy_to_dat import cubit_to_dat
 
 
 class CubitPy(object):
@@ -62,13 +64,13 @@ class CubitPy(object):
         # Set lists and counters for blocks and sets
         self._default_cubit_variables()
 
-        # Content of head file
-        self.head = ""
+        self.fourc_input = FourCInput()
 
     def _default_cubit_variables(self):
         """Set the default values for the lists and counters used in cubit."""
         self.blocks = []
         self.node_sets = []
+        self.fourc_input = FourCInput()
 
     def __getattr__(self, key, *args, **kwargs):
         """All calls to methods and attributes that are not in this object get
@@ -121,7 +123,7 @@ class CubitPy(object):
             self.cubit.cmd('{} {} name "{}"'.format(set_type, set_id, rename_name))
 
     def add_element_type(
-        self, item, el_type, *, name=None, material="MAT 1", bc_description=None
+        self, item, el_type, *, name=None, material=None, bc_description=None
     ):
         """Add a block to cubit that contains the geometry in item. Also set
         the element type of block.
@@ -134,13 +136,19 @@ class CubitPy(object):
             Cubit element type.
         name: str
             Name of the block.
-        material: str
+        material: dict
             Material string of the block, will be the first part of the BC
             description.
-        bc_description: str
+        bc_description: dict
             Will be written after the material string. If this is not set, the
             default values for the given element type will be used.
         """
+
+        # default values
+        if material is None:
+            material = {"MAT": 1}
+        if bc_description is None:
+            bc_description = {}
 
         # Check that all blocks in cubit are created with this function.
         n_blocks = len(self.blocks)
@@ -180,11 +188,11 @@ class CubitPy(object):
         self._name_created_set("block", n_blocks + 1, name, item)
 
         # If the user does not give a bc_description, load the default one.
-        if bc_description is None:
+        if not bc_description:
             bc_description = el_type.get_default_four_c_description()
 
         # Add data that will be written to bc file.
-        self.blocks.append([el_type, " ".join([material, bc_description])])
+        self.blocks.append([el_type, material | bc_description])
 
     def reset_blocks(self):
         """This method deletes all blocks in Cubit and resets the counter in
@@ -203,7 +211,7 @@ class CubitPy(object):
         *,
         name=None,
         bc_type=None,
-        bc_description="NUMDOF 3 ONOFF 0 0 0 VAL 0 0 0 FUNCT 0 0 0",
+        bc_description=None,
         bc_section=None,
         geometry_type=None,
     ):
@@ -221,7 +229,7 @@ class CubitPy(object):
         bc_section: str
             Name of the section in the input file. Mutually exclusive with
             bc_type.
-        bc_description: str
+        bc_description: dict
             Definition of the boundary condition.
         geometry_type: cupy.geometry
             Directly set the geometry type, instead of obtaining it from the
@@ -267,6 +275,8 @@ class CubitPy(object):
             )
         if bc_section is None:
             bc_section = bc_type.get_dat_bc_section_header(geometry_type)
+        if bc_description is None:
+            bc_description = {}
         self.node_sets.append([bc_section, bc_description, geometry_type])
 
     def get_ids(self, geometry_type):
@@ -319,28 +329,22 @@ class CubitPy(object):
         """Export the mesh."""
         self.cubit.cmd('export mesh "{}" dimension 3 overwrite'.format(path))
 
-    def create_dat(self, dat_path):
-        """Create the dat file an copy it to dat_path.
+    def write_input_file(self, yaml_path):
+        """Create the yaml file an save it in yaml_path.
 
         Args
         ----
-        dat_path: str
+        yaml_path: str
             Path where the input file file will be saved
         """
 
-        # Check if output path exists.
-        if os.path.isabs(dat_path):
-            dat_dir = os.path.dirname(dat_path)
-            if not os.path.exists(dat_dir):
-                raise ValueError("Path {} does not exist!".format(dat_dir))
+        # Check if output path exists
+        dat_dir = os.path.dirname(os.path.abspath(yaml_path))
+        if not os.path.exists(dat_dir):
+            raise ValueError("Path {} does not exist!".format(dat_dir))
 
-        with open(dat_path, "w") as the_file:
-            for line in self.get_dat_lines():
-                the_file.write(line + "\n")
-
-    def get_dat_lines(self):
-        """Return a list with all lines in this input file."""
-        return cubit_to_dat(self)
+        input_file = get_input_file_with_mesh(self)
+        input_file.dump(yaml_path)
 
     def group(self, **kwargs):
         """Reference a group in cubit.

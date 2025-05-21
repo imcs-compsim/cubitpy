@@ -176,13 +176,23 @@ def cubit_step_by_step_tutorial_cli(
         cubit.group(add_value="add surface with y_coord < -4.99"),
         name="fix",
         bc_type=cupy.bc_type.dirichlet,
-        bc_description="NUMDOF 3 ONOFF 1 1 1 VAL 0 0 0 FUNCT 0 0 0",
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [1, 1, 1],
+            "VAL": [0, 0, 0],
+            "FUNCT": [0, 0, 0],
+        },
     )
     cubit.add_node_set(
         cubit.group(add_value="add surface with y_coord > 4.99 "),
         name="load",
         bc_type=cupy.bc_type.neumann,
-        bc_description="NUMDOF 3 ONOFF 0 1 0 VAL 0 0.1 0 FUNCT 0 1 0",
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [0, 1, 0],
+            "VAL": [0, 0.1, 0],
+            "FUNCT": [0, 1, 0],
+        },
     )
 
     # Finally we have to set the element blocks.
@@ -194,54 +204,57 @@ def cubit_step_by_step_tutorial_cli(
         cubit.display_in_cubit()
 
     # Set the head string.
-    cubit.head = """
-    ------------------------------------------------------------------PROBLEM TYPE
-    PROBLEMTYP                      Structure
-    ----------------------------------------------------------------------------IO
-    OUTPUT_BIN                      no
-    STRUCT_DISP                     yes
-    FILESTEPS                       1000
-    VERBOSITY                       Standard
-    STRUCT_STRAIN                   gl
-    STRUCT_STRESS                   cauchy
-    OUTPUT_SPRING                   Yes
-    WRITE_INITIAL_STATE             yes
-    ---------------------------------------------------------IO/RUNTIME VTK OUTPUT
-    OUTPUT_DATA_FORMAT              binary
-    INTERVAL_STEPS                  1
-    EVERY_ITERATION                 no
-    -----------------------------------------------IO/RUNTIME VTK OUTPUT/STRUCTURE
-    OUTPUT_STRUCTURE                yes
-    DISPLACEMENT                    yes
-    ELEMENT_OWNER                   yes
-    STRESS_STRAIN                   yes
-    ----------------------------------------------------------------------SOLVER 1
-    NAME                            Structure_Solver
-    SOLVER                          Superlu
-    ------------------------------------------------------------STRUCTURAL DYNAMIC
-    INT_STRATEGY                    Standard
-    DYNAMICTYP                      Statics
-    PRESTRESSTOLDISP                1e-10
-    TIMESTEP                        0.5
-    NUMSTEP                         20
-    MAXTIME                         10
-    TOLDISP                         1e-10
-    TOLRES                          1e-10
-    LINEAR_SOLVER                   1
-    NLNSOL                          fullnewton
-    MAXITER                         200
-    -----------------------------------------------------------STRUCT NOX/Printing
-    Outer Iteration                 = Yes
-    Inner Iteration                 = No
-    Outer Iteration StatusTest      = No
-    ---------------------------------------------------------------------MATERIALS
-     MAT 1 MAT_Struct_StVenantKirchhoff  YOUNG 1.0E1  NUE 0.3 DENS 0
-    --------------------------------------------------------------------------FUNCT1
-    SYMBOLIC_FUNCTION_OF_SPACE_TIME t
-    """
+    cubit.fourc_input.combine_sections(
+        {
+            "PROBLEM TYPE": {"PROBLEMTYPE": "Structure"},
+            "IO": {
+                "OUTPUT_SPRING": True,
+                "OUTPUT_BIN": False,
+                "VERBOSITY": "Standard",
+                "STRUCT_STRAIN": "GL",
+                "STRUCT_STRESS": "Cauchy",
+            },
+            "IO/RUNTIME VTK OUTPUT": {
+                "INTERVAL_STEPS": 1,
+            },
+            "IO/RUNTIME VTK OUTPUT/STRUCTURE": {
+                "OUTPUT_STRUCTURE": True,
+                "DISPLACEMENT": True,
+                "ELEMENT_OWNER": True,
+                "STRESS_STRAIN": True,
+            },
+            "SOLVER 1": {"NAME": "Structure_Solver", "SOLVER": "Superlu"},
+            "STRUCTURAL DYNAMIC": {
+                "INT_STRATEGY": "Standard",
+                "DYNAMICTYPE": "Statics",
+                "PRESTRESSTOLDISP": 1e-10,
+                "TIMESTEP": 0.5,
+                "NUMSTEP": 20,
+                "MAXTIME": 10,
+                "TOLRES": 1e-10,
+                "MAXITER": 200,
+                "LINEAR_SOLVER": 1,
+            },
+            "STRUCT NOX/Printing": {
+                "Inner Iteration": False,
+                "Outer Iteration StatusTest": False,
+            },
+            "MATERIALS": [
+                {
+                    "MAT": 1,
+                    "MAT_Struct_StVenantKirchhoff": {
+                        "YOUNG": 1.0e1,
+                        "NUE": 0.3,
+                        "DENS": 0,
+                    },
+                }
+            ],
+            "FUNCT1": [{"SYMBOLIC_FUNCTION_OF_SPACE_TIME": "t"}],
+        }
+    )
 
     # Write the input file.
-    cubit.create_dat(input_file_path)
+    cubit.write_input_file(input_file_path)
 
 
 if __name__ == "__main__":

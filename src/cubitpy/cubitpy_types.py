@@ -174,10 +174,9 @@ class ElementType(Enum):
         """Get the name of this element in 4C."""
 
         # Get the element type parameters.
-        if self == self.hex8sh:
-            return "SOLIDSH8"
-        elif (
-            self == self.hex8
+        if (
+            self == self.hex8sh
+            or self == self.hex8
             or self == self.hex20
             or self == self.hex27
             or self == self.tet10
@@ -264,15 +263,16 @@ class ElementType(Enum):
             or self == self.tet10
             or self == self.wedge6
         ):
-            return "KINEM nonlinear"
+            return {"KINEM": "nonlinear"}
         elif self == self.hex8sh:
-            return "KINEM nonlinear EAS none ANS none THICKDIR auto"
+            return {"KINEM": "nonlinear", "TECH": "shell_eas_ans"}
+
         elif self == self.hex8_fluid or self == self.tet4_fluid:
-            return "NA ALE"
+            return {"NA": "ALE"}
         elif self == self.hex8_thermo or self == self.tet4_thermo:
-            return ""
+            return {}
         elif self == self.hex8_scatra or self == self.tet4_scatra:
-            return ""
+            return {}
         else:
             raise ValueError("Got wrong element type {}!".format(self))
 
