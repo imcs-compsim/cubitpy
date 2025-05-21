@@ -22,10 +22,13 @@
 """This script is used to test the functionality of the cubitpy module."""
 
 import os
+import shutil
 import subprocess
 
 import numpy as np
 import pytest
+from deepdiff import DeepDiff
+from fourcipp.fourc_input import FourCInput
 
 # Define the testing paths.
 testing_path = os.path.abspath(os.path.dirname(__file__))
@@ -55,87 +58,22 @@ def check_tmp_dir():
     os.makedirs(testing_temp, exist_ok=True)
 
 
-def compare_strings_with_tolerance_assert(
-    reference, result, *, rtol=None, atol=None, string_splitter=" "
-):
-    """Compare if two strings are identical within a given tolerance.
-
-    This function is copied from the MeshPy repository.
-
-    Args:
-        reference: The reference string.
-        result: The result string.
-        rtol: The relative tolerance.
-        atol: The absolute tolerance.
-        string_splitter: With which string the strings are split.
-    """
-
-    rtol = 0.0 if rtol is None else rtol
-    atol = 0.0 if atol is None else atol
-
-    lines_reference = reference.strip().split("\n")
-    lines_result = result.strip().split("\n")
-
-    if len(lines_reference) != len(lines_result):
-        raise AssertionError(
-            f"String comparison with tolerance failed!\n"
-            + f"Number of lines in reference and result differ: {len(lines_reference)} != {len(lines_result)}"
-        )
-
-    # Loop over each line in the file
-    for line_reference, line_result in zip(lines_reference, lines_result):
-        line_reference_splits = line_reference.strip().split(string_splitter)
-        line_result_splits = line_result.strip().split(string_splitter)
-
-        if len(line_reference_splits) != len(line_result_splits):
-            raise AssertionError(
-                f"String comparison with tolerance failed!\n"
-                + f"Number of items in reference and result line differ!\n"
-                + f"Reference line: {line_reference}\n"
-                + f"Result line:    {line_result}"
-            )
-
-        # Loop over each entry in the line
-        for item_reference, item_result in zip(
-            line_reference_splits, line_result_splits
-        ):
-            try:
-                number_reference = float(item_reference.strip())
-                number_result = float(item_result.strip())
-                if np.isclose(number_reference, number_result, rtol=rtol, atol=atol):
-                    pass
-                else:
-                    raise AssertionError(
-                        f"String comparison with tolerance failed!\n"
-                        + f"Numbers do not match within given tolerance!\n"
-                        + f"Reference line: {line_reference}\n"
-                        + f"Result line:    {line_result}"
-                    )
-
-            except ValueError:
-                if item_reference.strip() != item_result.strip():
-                    raise AssertionError(
-                        f"String comparison with tolerance failed!\n"
-                        + f"Strings do not match in line!\n"
-                        + f"Reference line: {line_reference}\n"
-                        + f"Result line:    {line_result}"
-                    )
-
-
-def compare(cubit, *, name=None, rtol=1.0e-8, atol=1.0e-8):
-    """Write create the dat file from the cubit mesh and compare to a reference
-    file.
+def compare_yaml(cubit, *, name=None, rtol=1.0e-12, atol=1.0e-12):
+    """Write and compare the YAML file from a Cubit object with the reference
+    YAML file.
 
     Args
     ----
-    cubit: Cubit object.
-    name: str
-        Name of the test case. A reference file 'name' + '_ref.dat' must
-        exits in the reference file folder. If no name is given, the test
-        name will be used.
+    cubit: Cubit object
+        Should implement `create_yaml(path)` to generate the test output.
+    name: str, optional
+        Name of the test case. Reference file 'name.yaml' must exist.
+    rtol: float
+        Relative tolerance for numerical differences.
+    atol: float
+        Absolute tolerance for numerical differences.
     """
-
-    # Get the name for this compare operation.
+    # Determine test name
     if name is None:
         name = (
             os.environ.get("PYTEST_CURRENT_TEST")
@@ -146,39 +84,56 @@ def compare(cubit, *, name=None, rtol=1.0e-8, atol=1.0e-8):
 
     check_tmp_dir()
 
-    # Get the file names and create the input file
-    ref_file = os.path.join(testing_input, name + ".dat")
-    dat_file = os.path.join(testing_temp, name + ".dat")
-    cubit.create_dat(dat_file)
+    # File paths
+    ref_file = os.path.join(testing_input, name + ".4C.yaml")
+    out_file = os.path.join(testing_temp, name + ".4C.yaml")
+    cubit.write_input_file(out_file)
 
-    def get_string(path):
-        """Get the file contents as string."""
-        with open(path, "r") as text_file:
-            string = text_file.read()
-        return string.strip()
+    ref_input_file = FourCInput.from_4C_yaml(ref_file)
+    out_input_file = FourCInput.from_4C_yaml(out_file)
 
-    ref_string = get_string(ref_file)
-    dat_string = get_string(dat_file)
-
-    # Check if the strings are equal, if not fail the test and show the
-    # differences in the strings.
     try:
-        compare_strings_with_tolerance_assert(
-            ref_string, dat_string, rtol=rtol, atol=atol
+        files_are_equal = ref_input_file.compare(
+            out_input_file,
+            allow_int_as_float=True,
+            raise_exception=True,
+            rtol=rtol,
+            atol=atol,
         )
-        files_are_equal = True
-    except AssertionError as _:
-        files_are_equal = False
+    except AssertionError as exception:
+        print(f"[compare] Files differ: {exception}")
 
-    if not files_are_equal:
-        if TESTING_GITHUB:
-            subprocess.run(["diff", ref_file, dat_file])
-        else:
-            child = subprocess.Popen(
-                ["code", "--diff", ref_file, dat_file], stderr=subprocess.PIPE
+        ref_sections = ref_input_file.sections
+        out_sections = out_input_file.sections
+
+        for section in ref_sections:
+            ref_section_data = ref_sections.get(section)
+            out_section_data = out_sections.get(section)
+
+            # Perform yaml comparison
+            diff = DeepDiff(
+                ref_section_data,
+                out_section_data,
+                ignore_order=True,
             )
-            child.communicate()
-    assert files_are_equal
+            if diff:
+                print(diff.pretty())
+
+        if TESTING_GITHUB:
+            subprocess.run(["diff", ref_file, out_file])
+        elif shutil.which("meld"):
+            subprocess.Popen(["meld", ref_file, out_file])
+        elif shutil.which("code"):
+            subprocess.Popen(
+                ["code", "--diff", ref_file, out_file], stderr=subprocess.PIPE
+            ).communicate()
+        else:
+            print("No viewer avail. - Inspect manually.")
+            print(f"Reference: {ref_file}")
+            print(f"Generated: {out_file}")
+        raise exception
+    else:
+        assert files_are_equal
 
 
 def create_block(cubit, np_arrays=False):
@@ -190,11 +145,6 @@ def create_block(cubit, np_arrays=False):
     np_arrays: bool
         If the cubit interaction is with numpy or python arrays.
     """
-
-    # Set head
-    cubit.head = """
-            // Header processed by cubit.
-            """
 
     # Dimensions and mesh size of the block.
     block_size = [0.1, 1, 10]
@@ -234,8 +184,8 @@ def create_block(cubit, np_arrays=False):
         block.volumes()[0],
         cupy.element_type.hex8,
         name="block",
-        material="MAT 1",
-        bc_description="KINEM linear",
+        material={"MAT": 1},
+        bc_description={"KINEM": "linear"},
     )
 
     # Create node sets.
@@ -246,30 +196,42 @@ def create_block(cubit, np_arrays=False):
                 surf,
                 name="fix",
                 bc_section="DESIGN SURF DIRICH CONDITIONS",
-                bc_description="NUMDOF 6 ONOFF 1 1 1 0 0 0 VAL 0.0 0.0 0.0 0.0 0.0 0.0 FUNCT 0 0 0 0 0 0",
+                bc_description={
+                    "NUMDOF": 6,
+                    "ONOFF": [1, 1, 1, 0, 0, 0],
+                    "VAL": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    "FUNCT": [0, 0, 0, 0, 0, 0],
+                },
             )
         elif np.dot(normal, [0, 0, 1]) == 1:
             cubit.add_node_set(
                 surf,
                 name="load",
                 bc_section="DESIGN SURF DIRICH CONDITIONS",
-                bc_description="NUMDOF 6 ONOFF 1 1 1 0 0 0 VAL 0.0 0.0 0.0 0.0 0.0 0.0 FUNCT 0 0 0 0 0 0",
+                bc_description={
+                    "NUMDOF": 6,
+                    "ONOFF": [1, 1, 1, 0, 0, 0],
+                    "VAL": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    "FUNCT": [0, 0, 0, 0, 0, 0],
+                },
             )
         else:
             cubit.add_node_set(
                 surf,
                 name="load{}".format(i),
                 bc_section="DESIGN SURF NEUMANN CONDITIONS",
-                bc_description="NUMDOF 6 ONOFF 1 1 1 0 0 0 VAL 0.0 0.0 0.0 0.0 0.0 0.0 FUNCT 0 0 0 0 0 0",
+                bc_description={
+                    "NUMDOF": 6,
+                    "ONOFF": [1, 1, 1, 0, 0, 0],
+                    "VAL": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    "FUNCT": [0, 0, 0, 0, 0, 0],
+                },
             )
 
     # Compare the input file created for 4C.
-    compare(cubit, name="test_create_block")
+    compare_yaml(cubit, name="test_create_block")
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_create_block():
     """Test the creation of a cubit block."""
 
@@ -278,9 +240,6 @@ def test_create_block():
     create_block(cubit)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_create_block_numpy_arrays():
     """Test the creation of a cubit block."""
 
@@ -289,9 +248,6 @@ def test_create_block_numpy_arrays():
     create_block(cubit, np_arrays=True)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_create_block_multiple():
     """Test the creation of a cubit block multiple time to check that cubit can
     be reset."""
@@ -313,9 +269,6 @@ def test_create_block_multiple():
     create_block(cubit_2)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_create_wedge6():
     """Create a mesh with wedge elements."""
     # Initialize cubit.
@@ -346,12 +299,12 @@ def test_create_wedge6():
         wedge_group,
         cupy.element_type.wedge6,
         name="wedges",
-        material="MAT 1",
+        material={"MAT": 1},
         bc_description=None,
     )
 
     # Compare the input file created for 4C
-    compare(cubit)
+    compare_yaml(cubit)
 
 
 def create_element_types_tet(cubit, element_type_list, name):
@@ -368,7 +321,7 @@ def create_element_types_tet(cubit, element_type_list, name):
             volume,
             element_type,
             name="block_" + str(i),
-            material="MAT 1",
+            material={"MAT": 1},
             bc_description=None,
         )
         cubit.cmd("Volume {} size 2".format(volume.id()))
@@ -378,22 +331,34 @@ def create_element_types_tet(cubit, element_type_list, name):
             volume.surfaces()[1],
             name="fix_" + str(i),
             bc_section="DESIGN SURF DIRICH CONDITIONS",
-            bc_description="NUMDOF 3 ONOFF 1 1 1 VAL 0 0 0 FUNCT 0 0 0",
+            bc_description={
+                "NUMDOF": 3,
+                "ONOFF": [1, 1, 1],
+                "VAL": [0, 0, 0],
+                "FUNCT": [0, 0, 0],
+            },
         )
 
-    # Set the head string.
-    cubit.head = """
-            -------------------------------------------------------------FUNCT1
-            SYMBOLIC_FUNCTION_OF_TIME t
-            ----------------------------------------------------------MATERIALS
-            MAT 1 MAT_Struct_StVenantKirchhoff YOUNG 1.0e+09 NUE 0.3 DENS 0.0
-            ------------------------------------IO/RUNTIME VTK OUTPUT/STRUCTURE
-            OUTPUT_STRUCTURE                Yes
-            DISPLACEMENT                    Yes
-            """
+    cubit.fourc_input["FUNCT1"] = [{"SYMBOLIC_FUNCTION_OF_TIME": "t"}]
+
+    cubit.fourc_input["MATERIALS"] = [
+        {
+            "MAT": 1,
+            "MAT_Struct_StVenantKirchhoff": {
+                "YOUNG": 1.0e9,
+                "NUE": 0.3,
+                "DENS": 0.0,
+            },
+        }
+    ]
+
+    cubit.fourc_input["IO/RUNTIME VTK OUTPUT/STRUCTURE"] = {
+        "OUTPUT_STRUCTURE": True,
+        "DISPLACEMENT": True,
+    }
 
     # Compare the input file created for 4C.
-    compare(cubit, name=name)
+    compare_yaml(cubit, name=name)
 
 
 def create_element_types_hex(cubit, element_type_list, name):
@@ -449,7 +414,7 @@ def create_element_types_hex(cubit, element_type_list, name):
             cubit.volume(1 + offset_volume),
             element_type,
             name="block_" + str(i),
-            material="MAT 1",
+            material={"MAT": 1},
             bc_description=None,
         )
 
@@ -462,27 +427,35 @@ def create_element_types_hex(cubit, element_type_list, name):
             cubit.surface(5 + offset_surface),
             name="fix_" + str(i),
             bc_section="DESIGN SURF DIRICH CONDITIONS",
-            bc_description="NUMDOF 3 ONOFF 1 1 1 VAL 0 0 0 FUNCT 0 0 0",
+            bc_description={
+                "NUMDOF": 3,
+                "ONOFF": [1, 1, 1],
+                "VAL": [0, 0, 0],
+                "FUNCT": [0, 0, 0],
+            },
         )
 
-    # Set the head string.
-    cubit.head = """
-            -------------------------------------------------------------FUNCT1
-            SYMBOLIC_FUNCTION_OF_TIME t
-            ----------------------------------------------------------MATERIALS
-            MAT 1 MAT_Struct_StVenantKirchhoff YOUNG 1.0e+09 NUE 0.3 DENS 0.0
-            ------------------------------------IO/RUNTIME VTK OUTPUT/STRUCTURE
-            OUTPUT_STRUCTURE                Yes
-            DISPLACEMENT                    Yes
-            """
+    cubit.fourc_input["FUNCT1"] = [{"SYMBOLIC_FUNCTION_OF_TIME": "t"}]
 
+    cubit.fourc_input["MATERIALS"] = [
+        {
+            "MAT": 1,
+            "MAT_Struct_StVenantKirchhoff": {
+                "YOUNG": 1e9,
+                "NUE": 0.3,
+                "DENS": 0,
+            },
+        }
+    ]
+
+    cubit.fourc_input["IO/RUNTIME VTK OUTPUT/STRUCTURE"] = {
+        "OUTPUT_STRUCTURE": True,
+        "DISPLACEMENT": True,
+    }
     # Compare the input file created for 4C.
-    compare(cubit, name=name)
+    compare_yaml(cubit, name=name)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_element_types_hex():
     """Create a curved solid with different hex element types."""
 
@@ -498,9 +471,6 @@ def test_element_types_hex():
     create_element_types_hex(cubit, element_type_list, name="test_element_types_hex")
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_element_types_tet():
     """Create a curved solid with different tet element types."""
 
@@ -526,23 +496,23 @@ def create_quad_mesh(plane):
     cubit.add_element_type(
         cubit.surface(1),
         cupy.element_type.quad4,
-        material="MAT 1",
-        bc_description="KINEM nonlinear EAS none THICK 1.0 STRESS_STRAIN plane_stress GP 3 3",
+        material={"MAT": 1},
+        bc_description={
+            "KINEM": "nonlinear",
+            "EAS": "none",
+            "THICK": 1.0,
+            "STRESS_STRAIN": "plane_stress",
+            "GP": [3, 3],
+        },
     )
     return cubit
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_element_types_quad_z_plane():
     """Create the mesh on the z plane."""
-    compare(create_quad_mesh("zplane"))
+    compare_yaml(create_quad_mesh("zplane"))
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_element_types_quad_y_plane():
     """Create quad4 mesh, with non-zero z-values to check that they are
     correctly output.
@@ -550,12 +520,9 @@ def test_element_types_quad_y_plane():
     This is not the case if the automatic option from cubit while
     exporting the exo file is chosen.
     """
-    compare(create_quad_mesh("yplane"))
+    compare_yaml(create_quad_mesh("yplane"))
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_block_function():
     """Create a solid block with different element types."""
 
@@ -584,7 +551,6 @@ def test_block_function():
                 element_type=element_type,
                 name=f"{element_type} {count}",
                 mesh=False,
-                material="test material string",
                 **kwargs_brick,
             )
             cubit.move(cube, [count, 0, 0])
@@ -592,12 +558,11 @@ def test_block_function():
             count += 1
 
     # Compare the input file created for 4C.
-    compare(cubit)
+    out_file = os.path.join(testing_temp, "tmp" + ".4C.yaml")
+    cubit.write_input_file(out_file)
+    compare_yaml(cubit)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_extrude_mesh_function():
     """Test the extrude mesh function."""
 
@@ -641,12 +606,9 @@ def test_extrude_mesh_function():
     cubit.add_element_type(volume, cupy.element_type.hex8)
 
     # Compare the input file created for 4C.
-    compare(cubit)
+    compare_yaml(cubit)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_extrude_mesh_function_average_normals_block():
     """Test the average extrude mesh function for two blocks."""
 
@@ -687,12 +649,9 @@ def test_extrude_mesh_function_average_normals_block():
     cubit.add_element_type(volume, cupy.element_type.hex8)
 
     # Compare the input file created for 4C.
-    compare(cubit)
+    compare_yaml(cubit)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_extrude_mesh_function_average_normals_for_cylinder_and_sphere():
     """Test the average extrude mesh function for curved surfaces (Toy Aneurysm
     Case)."""
@@ -744,12 +703,9 @@ def test_extrude_mesh_function_average_normals_for_cylinder_and_sphere():
     cubit.add_element_type(volume, cupy.element_type.hex8)
 
     # Compare the input file created for 4C.
-    compare(cubit)
+    compare_yaml(cubit)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_node_set_geometry_type():
     """Create the boundary conditions via the bc_type enum."""
 
@@ -764,25 +720,45 @@ def test_node_set_geometry_type():
         solid.vertices()[0],
         name="vertex",
         bc_type=cupy.bc_type.dirichlet,
-        bc_description="NUMDOF 3 ONOFF 1 1 1 VAL 0 0 0 FUNCT 0 0 1",
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [1, 1, 1],
+            "VAL": [0, 0, 0],
+            "FUNCT": [0, 0, 1],
+        },
     )
     cubit.add_node_set(
         solid.curves()[0],
         name="curve",
         bc_type=cupy.bc_type.neumann,
-        bc_description="NUMDOF 3 ONOFF 1 1 1 VAL 0 0 0 FUNCT 0 0 2",
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [1, 1, 1],
+            "VAL": [0, 0, 0],
+            "FUNCT": [0, 0, 2],
+        },
     )
     cubit.add_node_set(
         solid.surfaces()[0],
         name="surface",
         bc_type=cupy.bc_type.dirichlet,
-        bc_description="NUMDOF 3 ONOFF 1 1 1 VAL 0 0 0 FUNCT 0 0 3",
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [1, 1, 1],
+            "VAL": [0, 0, 0],
+            "FUNCT": [0, 0, 3],
+        },
     )
     cubit.add_node_set(
         solid.volumes()[0],
         name="volume",
         bc_type=cupy.bc_type.neumann,
-        bc_description="NUMDOF 3 ONOFF 1 1 1 VAL 0 0 0 FUNCT 0 0 4",
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [1, 1, 1],
+            "VAL": [0, 0, 0],
+            "FUNCT": [0, 0, 4],
+        },
     )
 
     # Define boundary conditions on explicit nodes.
@@ -791,7 +767,12 @@ def test_node_set_geometry_type():
         name="point2",
         geometry_type=cupy.geometry.vertex,
         bc_type=cupy.bc_type.neumann,
-        bc_description="NUMDOF 3 ONOFF 1 1 1 VAL 0 0 0 FUNCT 0 0 4",
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [1, 1, 1],
+            "VAL": [0, 0, 0],
+            "FUNCT": [0, 0, 4],
+        },
     )
     cubit.add_node_set(
         cubit.group(
@@ -802,7 +783,12 @@ def test_node_set_geometry_type():
         name="point3",
         geometry_type=cupy.geometry.vertex,
         bc_type=cupy.bc_type.neumann,
-        bc_description="NUMDOF 3 ONOFF 1 1 1 VAL 0 0 0 FUNCT 0 0 4",
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [1, 1, 1],
+            "VAL": [0, 0, 0],
+            "FUNCT": [0, 0, 4],
+        },
     )
 
     # Coupling.
@@ -810,27 +796,30 @@ def test_node_set_geometry_type():
         solid.volumes()[0],
         name="coupling_btsv",
         bc_type=cupy.bc_type.beam_to_solid_volume_meshtying,
-        bc_description="COUPLING_ID 1",
+        bc_description={"COUPLING_ID": 1},
     )
     cubit.add_node_set(
         solid.surfaces()[0],
         name="coupling_btss",
         bc_type=cupy.bc_type.beam_to_solid_surface_meshtying,
-        bc_description="COUPLING_ID 1",
+        bc_description={"COUPLING_ID": 1},
     )
 
-    # Set the head string.
-    cubit.head = """
-            ----------------------------------------------------------MATERIALS
-            MAT 1 MAT_Struct_StVenantKirchhoff YOUNG 10 NUE 0.0 DENS 0.0"""
+    cubit.fourc_input["MATERIALS"] = [
+        {
+            "MAT": 1,
+            "MAT_Struct_StVenantKirchhoff": {
+                "YOUNG": 10,
+                "NUE": 0.0,
+                "DENS": 0.0,
+            },
+        }
+    ]
 
     # Compare the input file created for 4C.
-    compare(cubit)
+    compare_yaml(cubit)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_contact_condition_beam_to_surface():
     """Test the beam-to-surface contact condition BC."""
     cubit = CubitPy()
@@ -845,16 +834,13 @@ def test_contact_condition_beam_to_surface():
         solid.surfaces()[0],
         name="block1_contact_side",
         bc_type=cupy.bc_type.beam_to_solid_surface_contact,
-        bc_description="COUPLING_ID 1",
+        bc_description={"COUPLING_ID": 1},
     )
 
     # Compare the input file created for 4C.
-    compare(cubit)
+    compare_yaml(cubit)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_contact_condition_surface_to_surface():
     """Test the surface-to-surface contact condition BC."""
     cubit = CubitPy()
@@ -869,22 +855,19 @@ def test_contact_condition_surface_to_surface():
         solid.surfaces()[0],
         name="block1_contact_side",
         bc_type=cupy.bc_type.solid_to_solid_surface_contact,
-        bc_description="0 Master",
+        bc_description={"InterfaceID": 0, "Side": "Master"},
     )
     cubit.add_node_set(
         solid2.surfaces()[3],
         name="block2_contact_side",
         bc_type=cupy.bc_type.solid_to_solid_surface_contact,
-        bc_description="0 Slave",
+        bc_description={"InterfaceID": 0, "Side": "Slave"},
     )
 
     # Compare the input file created for 4C.
-    compare(cubit)
+    compare_yaml(cubit)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_fluid_functionality():
     """Test fluid conditions and fluid mesh creation."""
 
@@ -903,23 +886,20 @@ def test_fluid_functionality():
         fluid.surfaces()[0],
         name="inflowrate",
         bc_type=cupy.bc_type.flow_rate,
-        bc_description="1",
+        bc_description={"ConditionID": 1},
     )
 
     cubit.add_node_set(
         fluid.surfaces()[1],
         name="inflow_stabilization",
         bc_type=cupy.bc_type.fluid_neumann_inflow_stab,
-        bc_description="1",
+        bc_description={},
     )
 
     # Compare the input file created for 4C.
-    compare(cubit)
+    compare_yaml(cubit)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_thermo_functionality():
     """Test thermo mesh creation."""
 
@@ -934,12 +914,9 @@ def test_thermo_functionality():
     )
 
     # Compare the input file created for 4C.
-    compare(cubit)
+    compare_yaml(cubit)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_scatra_functionality():
     """Test scatra mesh creation."""
 
@@ -954,12 +931,9 @@ def test_scatra_functionality():
     )
 
     # Compare the input file created for 4C.
-    compare(cubit)
+    compare_yaml(cubit)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_fsi_functionality():
     """Test fsi and ale conditions and fluid mesh creation."""
 
@@ -982,28 +956,30 @@ def test_fsi_functionality():
         fluid.surfaces()[0],
         name="fsi_fluid_side",
         bc_type=cupy.bc_type.fsi_coupling,
-        bc_description="1",
+        bc_description={"coupling_id": 1},
     )
     cubit.add_node_set(
         solid.surfaces()[3],
         name="fsi_solid_side",
         bc_type=cupy.bc_type.fsi_coupling,
-        bc_description="1",
+        bc_description={"coupling_id": 1},
     )
     cubit.add_node_set(
         fluid.surfaces()[3],
         name="ale_dirichlet_side",
         bc_type=cupy.bc_type.ale_dirichlet,
-        bc_description="NUMDOF 3 ONOFF 1 1 1 VAL 0 0 0 FUNCT 0 0 0",
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [1, 1, 1],
+            "VAL": [0, 0, 0],
+            "FUNCT": [0, 0, 0],
+        },
     )
 
     # Compare the input file created for 4C.
-    compare(cubit)
+    compare_yaml(cubit)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_point_coupling():
     """Create node-node and vertex-vertex coupling."""
 
@@ -1037,7 +1013,10 @@ def test_point_coupling():
                     ),
                     geometry_type=cupy.geometry.vertex,
                     bc_type=cupy.bc_type.point_coupling,
-                    bc_description="NUMDOF 3 ONOFF 1 1 1",
+                    bc_description={
+                        "NUMDOF": 3,
+                        "ONOFF": [1, 1, 1],
+                    },
                 )
 
     # Also add coupling explicitly to the on corners.
@@ -1052,34 +1031,28 @@ def test_point_coupling():
                 cubit.add_node_set(
                     group,
                     bc_type=cupy.bc_type.point_coupling,
-                    bc_description="NUMDOF 3 ONOFF 1 2 3",
+                    bc_description={
+                        "NUMDOF": 3,
+                        "ONOFF": [1, 2, 3],
+                    },
                 )
 
     # Compare the input file created for 4C.
-    compare(cubit)
+    compare_yaml(cubit)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_groups_block_with_volume():
     """Test the group functions where the block is created by adding the
     volume."""
     xtest_groups(True)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_groups_block_with_hex():
     """Test the group functions where the block is created by adding the hex
     elements directly."""
     xtest_groups(False)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_group_of_surfaces():
     """Test the proper creation of a group of surfaces and assign them an
     element type."""
@@ -1103,12 +1076,18 @@ def test_group_of_surfaces():
         surfaces,
         cupy.element_type.quad4,
         name="mesh",
-        material="MAT 1",
-        bc_description="KINEM linear EAS none THICK 1.0 STRESS_STRAIN plane_strain GP 3 3",
+        material={"MAT": 1},
+        bc_description={
+            "KINEM": "linear",
+            "EAS": "none",
+            "THICK": 1.0,
+            "STRESS_STRAIN": "plane_strain",
+            "GP": [3, 3],
+        },
     )
 
     # Compare the input file created for 4C.
-    compare(cubit, name="test_group_of_surfaces")
+    compare_yaml(cubit)
 
 
 def xtest_groups(block_with_volume):
@@ -1160,38 +1139,64 @@ def xtest_groups(block_with_volume):
         cubit.add_element_type(
             volume,
             cupy.element_type.hex8,
-            material="MAT 1",
-            bc_description="KINEM linear",
+            material={"MAT": 1},
+            bc_description={"KINEM": "linear"},
         )
 
     # Add BCs.
     cubit.add_node_set(
         surface_fix,
         bc_type=cupy.bc_type.dirichlet,
-        bc_description="NUMDOF 3 ONOFF 1 1 1 VAL 0 0 0 FUNCT 0 0 0",
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [1, 1, 1],
+            "VAL": [0, 0, 0],
+            "FUNCT": [0, 0, 0],
+        },
     )
+
     cubit.add_node_set(
         surface_load,
         bc_type=cupy.bc_type.neumann,
-        bc_description="NUMDOF 3 ONOFF 0 0 1 VAL 0 0 1 FUNCT 0 0 0",
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [0, 0, 1],
+            "VAL": [0, 0, 1],
+            "FUNCT": [0, 0, 0],
+        },
     )
     cubit.add_node_set(
         surface_load_alt,
         bc_type=cupy.bc_type.neumann,
-        bc_description="NUMDOF 3 ONOFF 0 0 1 VAL 0 0 1 FUNCT 0 0 0",
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [0, 0, 1],
+            "VAL": [0, 0, 1],
+            "FUNCT": [0, 0, 0],
+        },
     )
     cubit.add_node_set(
         group_no_name,
         name="fix_surf_no_name_group",
         bc_type=cupy.bc_type.dirichlet,
-        bc_description="NUMDOF 3 ONOFF 1 1 1 VAL 0 0 0 FUNCT 0 0 0",
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [1, 1, 1],
+            "VAL": [0, 0, 0],
+            "FUNCT": [0, 0, 0],
+        },
     )
     cubit.add_node_set(
         group_explicit_type,
         name="fix_group_explicit_type",
         geometry_type=cupy.geometry.vertex,
         bc_type=cupy.bc_type.dirichlet,
-        bc_description="NUMDOF 3 ONOFF 1 1 1 VAL 0 0 0 FUNCT 0 0 0",
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [1, 1, 1],
+            "VAL": [0, 0, 0],
+            "FUNCT": [0, 0, 0],
+        },
     )
 
     # Mesh the model.
@@ -1204,8 +1209,8 @@ def xtest_groups(block_with_volume):
         cubit.add_element_type(
             all_hex,
             cupy.element_type.hex8,
-            material="MAT 1",
-            bc_description="KINEM linear",
+            material={"MAT": 1},
+            bc_description={"KINEM": "linear"},
         )
 
     # Add a group containing elements and nodes.
@@ -1217,16 +1222,27 @@ def xtest_groups(block_with_volume):
         mesh_group,
         geometry_type=cupy.geometry.vertex,
         bc_type=cupy.bc_type.dirichlet,
-        bc_description="NUMDOF 3 ONOFF 1 1 1 VAL 0 0 0 FUNCT 0 0 0",
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [1, 1, 1],
+            "VAL": [0, 0, 0],
+            "FUNCT": [0, 0, 0],
+        },
     )
 
-    # Set the head string.
-    cubit.head = """
-            ----------------------------------------------------------MATERIALS
-            MAT 1 MAT_Struct_StVenantKirchhoff YOUNG 10 NUE 0.0 DENS 0.0"""
+    cubit.fourc_input["MATERIALS"] = [
+        {
+            "MAT": 1,
+            "MAT_Struct_StVenantKirchhoff": {
+                "YOUNG": 10,
+                "NUE": 0.0,
+                "DENS": 0.0,
+            },
+        }
+    ]
 
     # Compare the input file created for 4C.
-    compare(cubit, name="test_groups")
+    compare_yaml(cubit, name="test_groups")
 
 
 def xtest_groups_multiple_sets_get_by(
@@ -1259,12 +1275,22 @@ def xtest_groups_multiple_sets_get_by(
     cubit.add_node_set(
         volume,
         bc_type=cupy.bc_type.dirichlet,
-        bc_description="NUMDOF 3 ONOFF 1 1 1 VAL 0 0 0 FUNCT 0 0 0",
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [1, 1, 1],
+            "VAL": [0, 0, 0],
+            "FUNCT": [0, 0, 0],
+        },
     )
     cubit.add_node_set(
         volume,
         bc_type=cupy.bc_type.neumann,
-        bc_description="NUMDOF 3 ONOFF 0 0 1 VAL 0 0 1 FUNCT 0 0 0",
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [0, 0, 1],
+            "VAL": [0, 0, 1],
+            "FUNCT": [0, 0, 0],
+        },
     )
 
     # Add blocks.
@@ -1274,42 +1300,35 @@ def xtest_groups_multiple_sets_get_by(
     cubit.cmd("volume {} size auto factor 8".format(volume.id()))
     cubit.cmd("mesh {}".format(volume))
 
-    # Set the head string.
-    cubit.head = """
-            ----------------------------------------------------------MATERIALS
-            MAT 1 MAT_Struct_StVenantKirchhoff YOUNG 10 NUE 0.0 DENS 0.0"""
-
+    cubit.fourc_input["MATERIALS"] = [
+        {
+            "MAT": 1,
+            "MAT_Struct_StVenantKirchhoff": {
+                "YOUNG": 10.0,
+                "NUE": 0.0,
+                "DENS": 0.0,
+            },
+        }
+    ]
     # Compare the input file created for 4C.
-    compare(cubit, name="test_groups_multiple_sets")
+    compare_yaml(cubit, name="test_groups_multiple_sets")
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_groups_multiple_sets():
     """Test that multiple sets can be created from a single group object."""
     xtest_groups_multiple_sets_get_by()
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_groups_get_by_id():
     """Test that groups can be obtained by id."""
     xtest_groups_multiple_sets_get_by(group_get_by_id=True)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_groups_get_by_name():
     """Test that groups can be obtained by name."""
     xtest_groups_multiple_sets_get_by(group_get_by_name=True)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_reset_block():
     """Test that the block counter can be reset in cubit."""
 
@@ -1323,11 +1342,11 @@ def test_reset_block():
     cubit.cmd("mesh volume 2")
 
     cubit.add_element_type(block_1.volumes()[0], cupy.element_type.hex8)
-    compare(cubit, name="test_reset_block_1")
+    compare_yaml(cubit, name="test_reset_block_1")
 
     cubit.reset_blocks()
     cubit.add_element_type(block_2.volumes()[0], cupy.element_type.hex8)
-    compare(cubit, name="test_reset_block_2")
+    compare_yaml(cubit, name="test_reset_block_2")
 
 
 def test_get_id_functions():
@@ -1376,9 +1395,6 @@ def test_get_node_id_function():
     assert node_ids == [15]
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_serialize_nested_lists():
     """Test that nested lists can be send to cubit correctly."""
 
@@ -1391,7 +1407,7 @@ def test_serialize_nested_lists():
     )
     subtracted_block[0].volumes()[0].mesh()
     cubit.add_element_type(subtracted_block[0].volumes()[0], cupy.element_type.hex8)
-    compare(cubit)
+    compare_yaml(cubit)
 
 
 def test_serialize_geometry_types():
@@ -1415,9 +1431,6 @@ def test_serialize_geometry_types():
     assert 0.0 == pytest.approx(np.linalg.norm(bounding_box - bounding_box_ref), 1e-10)
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_mesh_import():
     """Test that the cubit class MeshImport works properly.
 
@@ -1437,7 +1450,7 @@ def test_mesh_import():
     element_group = cubit.group(add_value="add HEX 1")
     cubit.add_element_type(element_group, cupy.element_type.hex8)
 
-    compare(cubit)
+    compare_yaml(cubit)
 
 
 def test_display_in_cubit():
@@ -1586,9 +1599,6 @@ def test_spline_interpolation_curve():
     assert np.linalg.norm(connectivity - connectivity_ref) == 0
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled due to switch to .yaml based input files - check if test is necessary and fix"
-)
 def test_create_brick_by_corner_points():
     """Test the create_brick_by_corner_points and create_surface_by_vertices
     functions."""
@@ -1623,7 +1633,7 @@ def test_create_brick_by_corner_points():
     cubit.cmd(f"volume {brick.id()} size auto factor 9")
     brick.mesh()
     cubit.add_element_type(brick, cupy.element_type.hex8)
-    compare(cubit)
+    compare_yaml(cubit)
 
 
 def setup_and_check_import_fluent_geometry(
