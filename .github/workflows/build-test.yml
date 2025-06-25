@@ -1,15 +1,10 @@
 on:
-  pull_request_target: # This is needed for secrets to work for branches from forks
+  pull_request_target: # Enables secrets for PRs to this repo
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    types:
-      - opened
-      - reopened
-      - synchronize
+    types: [opened, reopened, synchronize]
   workflow_dispatch:
-    type: choice
 
 jobs:
   code_checks:
@@ -42,31 +37,35 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
+
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: 3.12
-      - name: Setup cubit and run tests
+
+      - name: Download and extract Cubit
         run: |
-          whoami
-          pwd
           wget -q https://f002.backblazeb2.com/file/cubit-downloads/Coreform-Cubit/Releases/Linux/Coreform-Cubit-2025.3%2B58709-Lin64.tar.gz
           tar -xzf *.tar.gz
-          export CUBIT_ROOT="$(pwd)/Coreform-Cubit-2025.3"
-          # Update pip
+          echo "CUBIT_ROOT=$(pwd)/Coreform-Cubit-2025.3" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: |
           pip install --upgrade pip
-          # Install cubitpy
           pip install -e .[dev]
-          # Print information on the python environment
           python --version
           pip list
-          # Activate cubit
-          $CUBIT_ROOT/bin/rlm_activate --login $CUBIT_EMAIL $CUBIT_PASSWORD
-          # Run tests
-          pytest
-          # This tests that if cubit is completely closed everything works
-          cd tests
-          ./test_configurations.sh
+
+      - name: Activate Cubit license (trusted PRs only)
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          $CUBIT_ROOT/bin/rlm_activate --login "$CUBIT_EMAIL" "$CUBIT_PASSWORD"
         env:
           CUBIT_EMAIL: ${{ secrets.CUBIT_EMAIL }}
           CUBIT_PASSWORD: ${{ secrets.CUBIT_PASSWORD }}
+
+      - name: Run tests
+        run: |
+          pytest
+          cd tests
+          ./test_configurations.sh
