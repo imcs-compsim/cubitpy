@@ -34,27 +34,24 @@ jobs:
 
   testing:
     name: cubitpy-testing
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     env:
-      CUBIT_ROOT: /imcs/public/compsim/opt/cubit-15.2
-      PYTHON_VENV: python-testing-environment
-      SPACK_ACTIVATION_SCRIPT: /home_local/github-runner/testing_lib/spack/share/spack/setup-env.sh
       TESTING_GITHUB: 1
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: true
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
       - name: Setup virtual environment and run tests
         run: |
           whoami
           pwd
-          export CUBITPY_PATH="$(pwd)"
-          # Activate spack and load python
-          . ${SPACK_ACTIVATION_SCRIPT}
-          spack load python@3.12.1
-          # Create the virtual environment
-          python -m venv $PYTHON_VENV
-          source $PYTHON_VENV/bin/activate
+          wget -q https://f002.backblazeb2.com/file/cubit-downloads/Coreform-Cubit/Releases/Linux/Coreform-Cubit-2025.3%2B58709-Lin64.tar.gz
+          tar -xzf *.tar.gz
+          export CUBIT_ROOT="$(pwd)/Coreform-Cubit-2025.3"
           # Update pip
           pip install --upgrade pip
           # Install cubitpy
