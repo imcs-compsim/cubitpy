@@ -57,7 +57,6 @@ jobs:
           pip list
 
       - name: Activate Cubit license (trusted PRs only)
-        if: github.event.pull_request.head.repo.full_name == github.repository
         run: |
           $CUBIT_ROOT/bin/rlm_activate --login "$CUBIT_EMAIL" "$CUBIT_PASSWORD"
         env:
