@@ -77,3 +77,4 @@ If you intend to actively develop CubitPy, please make sure to install the `pre-
 ```bash
 pre-commit install
 ```
+s
