@@ -58,7 +58,7 @@ jobs:
 
       - name: Activate Cubit license (trusted PRs only)
         run: |
-          $CUBIT_ROOT/bin/rlm_activate --login ivo.steinbrecher@unibw.de meins
+          $CUBIT_ROOT/bin/rlm_activate --login ivo.steinbrecher@unibw.de $CUBIT_PASSWORD
         env:
           CUBIT_EMAIL: ${{ secrets.CUBIT_EMAIL }}
           CUBIT_PASSWORD: ${{ secrets.CUBIT_PASSWORD }}
