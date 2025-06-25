@@ -45,7 +45,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: 3.12
-      - name: Setup virtual environment and run tests
+      - name: Setup cubit and run tests
         run: |
           whoami
           pwd
@@ -59,8 +59,13 @@ jobs:
           # Print information on the python environment
           python --version
           pip list
+          # Activate cubit
+          $CUBIT_ROOT/bin/rlm_activate --login $CUBIT_EMAIL $CUBIT_PASSWORD
           # Run tests
           pytest
           # This tests that if cubit is completely closed everything works
           cd tests
           ./test_configurations.sh
+        env:
+          CUBIT_EMAIL: ${{ secrets.CUBIT_EMAIL }}
+          CUBIT_PASSWORD: ${{ secrets.CUBIT_PASSWORD }}
