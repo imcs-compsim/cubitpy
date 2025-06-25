@@ -1,5 +1,5 @@
 on:
-  pull_request_target:
+  pull_request_target: # This is needed for secrets to work for branches from forks
   push:
     branches:
       - main
@@ -61,7 +61,7 @@ jobs:
           python --version
           pip list
           # Activate cubit
-          $CUBIT_ROOT/bin/rlm_activate --login ivo.steinbrecher@unibw.de temp
+          $CUBIT_ROOT/bin/rlm_activate --login $CUBIT_EMAIL $CUBIT_PASSWORD
           # Run tests
           pytest
           # This tests that if cubit is completely closed everything works
