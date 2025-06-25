@@ -22,10 +22,10 @@
 # THE SOFTWARE.
 # Test the deletion of objects.
 # Save stderr in variable.
-python test_delete.py
+python run_delete_test.py
 
-# Exit status to fail gitlab pipeline.
-ERRORSTRING=$(python test_delete.py 2>&1)
+# Exit status to fail pipeline.
+ERRORSTRING=$(python run_delete_test.py 2>&1)
 if [[ -z "$ERRORSTRING" ]]; then
     # if std error was empty, test was ok
     echo "Deletion test OK!"

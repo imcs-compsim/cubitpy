@@ -21,7 +21,7 @@
 # THE SOFTWARE.
 """Test if the last element is deleted correctly."""
 
-from cubitpy import CubitPy
+from cubitpy import CubitPy  # type: ignore[attr-defined]
 
 # Initialize cubit
 cubit = CubitPy()
