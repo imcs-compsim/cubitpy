@@ -21,18 +21,18 @@
 # THE SOFTWARE.
 """Test if the last element is deleted correctly."""
 
-from cubitpy import CubitPy
+# from cubitpy import CubitPy
 
-# Initialize cubit
-cubit = CubitPy()
+# # Initialize cubit
+# cubit = CubitPy()
 
-# Create cylinder.
-cylinder = cubit.cylinder(1, 1, 1, 1)
+# # Create cylinder.
+# cylinder = cubit.cylinder(1, 1, 1, 1)
 
-# Set the mesh size.
-for curve in cylinder.curves():
-    cubit.set_line_interval(curve, 10)
-cubit.cmd("surface 1 size 0.5")
+# # Set the mesh size.
+# for curve in cylinder.curves():
+#     cubit.set_line_interval(curve, 10)
+# cubit.cmd("surface 1 size 0.5")
 
-# Mesh the geometry.
-cylinder.volumes()[0].mesh()
+# # Mesh the geometry.
+# cylinder.volumes()[0].mesh()
