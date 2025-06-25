@@ -58,6 +58,12 @@ jobs:
 
       - name: Activate Cubit license (trusted PRs only)
         run: |
+          if [[ -z "$CUBIT_ROOT" ]]; then
+            echo "❌ CUBIT_ROOT is empty or not injected"
+            exit 1
+          else
+            echo "✅ CUBIT_ROOT was injected successfully"
+          fi
           $CUBIT_ROOT/bin/rlm_activate --login ivo.steinbrecher@unibw.de $CUBIT_PASSWORD
         env:
           CUBIT_EMAIL: ${{ secrets.CUBIT_EMAIL }}
