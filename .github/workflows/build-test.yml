@@ -60,7 +60,7 @@ jobs:
           python --version
           pip list
           # Activate cubit
-          $CUBIT_ROOT/bin/rlm_activate --login $CUBIT_EMAIL $CUBIT_PASSWORD
+          $CUBIT_ROOT/bin/rlm_activate --login ivo.steinbrecher@unibw.de temp
           # Run tests
           pytest
           # This tests that if cubit is completely closed everything works
