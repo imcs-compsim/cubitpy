@@ -1,14 +1,10 @@
 on:
+  pull_request_target: # Enables secrets for PRs to this repo
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    types:
-      - opened
-      - reopened
-      - synchronize
+    types: [opened, reopened, synchronize]
   workflow_dispatch:
-    type: choice
 
 jobs:
   code_checks:
@@ -34,36 +30,47 @@ jobs:
 
   testing:
     name: cubitpy-testing
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     env:
-      CUBIT_ROOT: /imcs/public/compsim/opt/cubit-15.2
-      PYTHON_VENV: python-testing-environment
-      SPACK_ACTIVATION_SCRIPT: /home_local/github-runner/testing_lib/spack/share/spack/setup-env.sh
       TESTING_GITHUB: 1
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: true
-      - name: Setup virtual environment and run tests
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      - name: Download and extract Cubit
         run: |
-          whoami
-          pwd
-          export CUBITPY_PATH="$(pwd)"
-          # Activate spack and load python
-          . ${SPACK_ACTIVATION_SCRIPT}
-          spack load python@3.12.1
-          # Create the virtual environment
-          python -m venv $PYTHON_VENV
-          source $PYTHON_VENV/bin/activate
-          # Update pip
+          wget -q https://f002.backblazeb2.com/file/cubit-downloads/Coreform-Cubit/Releases/Linux/Coreform-Cubit-2025.3%2B58709-Lin64.tar.gz
+          tar -xzf *.tar.gz
+          echo "CUBIT_ROOT=$(pwd)/Coreform-Cubit-2025.3" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: |
           pip install --upgrade pip
-          # Install cubitpy
           pip install -e .[dev]
-          # Print information on the python environment
           python --version
           pip list
-          # Run tests
+
+      - name: Activate Cubit license (trusted PRs only)
+        run: |
+          if [[ -z "$CUBIT_PASSWORD" ]]; then
+            echo "❌ CUBIT_PASSWORD is empty or not injected"
+            exit 1
+          else
+            echo "✅ CUBIT_PASSWORD was injected successfully"
+          fi
+          $CUBIT_ROOT/bin/rlm_activate --login ivo.steinbrecher@unibw.de $CUBIT_PASSWORD
+        env:
+          CUBIT_EMAIL: ${{ secrets.CUBIT_EMAIL }}
+          CUBIT_PASSWORD: ${{ secrets.CUBIT_PASSWORD }}
+
+      - name: Run tests
+        run: |
           pytest
-          # This tests that if cubit is completely closed everything works
           cd tests
           ./test_configurations.sh
