@@ -65,12 +65,9 @@ jobs:
             echo "✅ CUBIT_PASSWORD was injected successfully"
           fi
           $CUBIT_ROOT/bin/rlm_activate --login ivo.steinbrecher@unibw.de $CUBIT_PASSWORD
-        env:
-          CUBIT_EMAIL: ${{ secrets.CUBIT_EMAIL }}
-          CUBIT_PASSWORD: ${{ secrets.CUBIT_PASSWORD }}
-
-      - name: Run tests
-        run: |
           pytest
           cd tests
           ./test_configurations.sh
+        env:
+          CUBIT_EMAIL: ${{ secrets.CUBIT_EMAIL }}
+          CUBIT_PASSWORD: ${{ secrets.CUBIT_PASSWORD }}
