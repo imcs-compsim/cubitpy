@@ -37,8 +37,9 @@ testing_temp = os.path.join(testing_path, "testing-tmp")
 testing_external_geometry = os.path.join(testing_path, "external-geometry")
 
 # CubitPy imports.
-from cubitpy import CubitPy, cupy
+from cubitpy.conf import cupy
 from cubitpy.cubit_utility import get_surface_center, import_fluent_geometry
+from cubitpy.cubitpy import CubitPy
 from cubitpy.geometry_creation_functions import (
     create_brick_by_corner_points,
     create_parametric_surface,
@@ -598,7 +599,11 @@ def test_extrude_mesh_function():
     )
 
     # Check the created volume.
-    assert 0.6917559630511103 == pytest.approx(
+    if cupy.is_coreform():
+        ref_volume = 0.6934429579015018
+    else:
+        ref_volume = 0.6917559630511103
+    assert ref_volume == pytest.approx(
         cubit.get_meshed_volume_or_area("volume", [volume.id()]), 1e-10
     )
 
@@ -695,7 +700,11 @@ def test_extrude_mesh_function_average_normals_for_cylinder_and_sphere():
     )
 
     # Check the size of the created volume.
-    assert 0.02668549643643842 == pytest.approx(
+    if cupy.is_coreform():
+        ref_volume = 0.026753602587277842
+    else:
+        ref_volume = 0.02668549643643842
+    assert ref_volume == pytest.approx(
         cubit.get_meshed_volume_or_area("volume", [volume.id()]), 1e-10
     )
 
@@ -1366,7 +1375,12 @@ def test_get_id_functions():
         cupy.geometry.curve
     )
     assert [1, 2, 3, 4, 5, 6, 7] == cubit.get_ids(cupy.geometry.surface)
-    assert [2] == cubit.get_ids(cupy.geometry.volume)
+    if cupy.is_coreform():
+        ref_ids = [1, 2]
+        assert [1, 2] == cubit.get_ids(cupy.geometry.volume)
+    else:
+        ref_ids = [2]
+    assert ref_ids == cubit.get_ids(cupy.geometry.volume)
 
 
 def test_get_node_id_function():
@@ -1483,8 +1497,12 @@ def test_display_in_cubit():
     )
     with open(journal_path, "r") as journal:
         journal_text = journal.read()
+    if cupy.is_coreform():
+        state_name = "state.cub5"
+    else:
+        state_name = "state.cub"
     ref_text = (
-        'open "{}/state.cub"\n'
+        f'open "{cupy.temp_dir}/{state_name}"\n'
         "label volume On\n"
         "label surface On\n"
         "label curve On\n"
@@ -1496,7 +1514,7 @@ def test_display_in_cubit():
         "label edge On\n"
         "label node On\n"
         "display"
-    ).format(cupy.temp_dir)
+    )
     assert journal_text.strip() == ref_text.strip()
 
 
@@ -1699,6 +1717,14 @@ def test_extrude_artery_of_aneurysm():
     )
 
     # Check the created volume.
-    assert 13.570135865871498 == pytest.approx(
+    if cupy.is_coreform():
+        print("is coregotm")
+        ref_volume = 13.613844185308892
+    else:
+        print("is old")
+        ref_volume = 13.570135865871498
+    print(f"ref: {ref_volume}")
+    print(f"vol form cubit: {cubit.get_meshed_volume_or_area('volume', [volume.id()])}")
+    assert ref_volume == pytest.approx(
         cubit.get_meshed_volume_or_area("volume", [volume.id()]), 1e-5
     )
