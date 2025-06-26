@@ -37,8 +37,9 @@ testing_temp = os.path.join(testing_path, "testing-tmp")
 testing_external_geometry = os.path.join(testing_path, "external-geometry")
 
 # CubitPy imports.
-from cubitpy import CubitPy, cupy
+from cubitpy.conf import cupy
 from cubitpy.cubit_utility import get_surface_center, import_fluent_geometry
+from cubitpy.cubitpy import CubitPy
 from cubitpy.geometry_creation_functions import (
     create_brick_by_corner_points,
     create_parametric_surface,
@@ -1717,9 +1718,13 @@ def test_extrude_artery_of_aneurysm():
 
     # Check the created volume.
     if cupy.is_coreform():
+        print("is coregotm")
         ref_volume = 13.613844185308892
     else:
+        print("is old")
         ref_volume = 13.570135865871498
+    print(f"ref: {ref_volume}")
+    print(f"vol form cubit: {cubit.get_meshed_volume_or_area('volume', [volume.id()])}")
     assert ref_volume == pytest.approx(
         cubit.get_meshed_volume_or_area("volume", [volume.id()]), 1e-5
     )
