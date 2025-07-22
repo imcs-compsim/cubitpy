@@ -11,11 +11,11 @@
 
 # Python stuff
 */__pycache__
-cubitpy.egg-info/*
+*/cubitpy.egg-info/*
 *-wheel-metadata/*
 */CubitPy.egg-info/*
 CubitPy.egg-info/
-
+/build/
 # Test file
 test.py
 
