@@ -26,11 +26,16 @@ import subprocess  # nosec B404
 import time
 import warnings
 
+import netCDF4
 from fourcipp.fourc_input import FourCInput
 
 from cubitpy.conf import cupy
 from cubitpy.cubit_group import CubitGroup
-from cubitpy.cubit_to_fourc_input import get_input_file_with_mesh
+from cubitpy.cubit_to_fourc_input import (
+    add_node_sets,
+    add_problem_geometry_section,
+    get_input_file_with_mesh,
+)
 from cubitpy.cubit_wrapper.cubit_wrapper_host import CubitConnect
 
 
@@ -328,6 +333,38 @@ class CubitPy(object):
     def export_exo(self, path):
         """Export the mesh."""
         self.cubit.cmd('export mesh "{}" dimension 3 overwrite'.format(path))
+
+    def dump_with_exo_mesh(self, path_stem):
+        """Create the 4C yaml input file and export the mesh in exo format.
+
+        The path_stem refers to the path where the input file and the mesh
+        should be saved, plus the prefix for the file names, but no endings.
+        The file endings will be added automatically, i.e., ``.4C.yaml`` for
+        the yaml input file and ``.exo`` for the mesh file.
+
+        Args
+        ----
+        path_stem: str
+            Path stem where the input file and the mesh will be saved.
+        """
+
+        # Check if output path exists
+        dat_dir = os.path.dirname(os.path.abspath(path_stem))
+        if not os.path.exists(dat_dir):
+            raise ValueError("Path {} does not exist!".format(dat_dir))
+
+        # Create the exodus file
+        exo_path = f"{path_stem}.exo"
+        self.export_exo(exo_path)
+        # parse the exodus file
+        exo = netCDF4.Dataset(exo_path)
+        # Add the node sets
+        add_node_sets(self, exo, self.fourc_input, write_topology_information=False)
+        # Add the problem geometry section
+        rel_exo_path = os.path.relpath(exo_path, start=dat_dir)
+        add_problem_geometry_section(self, rel_exo_path)
+        # Export the input file (now with nodesets) in YAML format
+        self.fourc_input.dump(f"{path_stem}.4C.yaml")
 
     def dump(self, yaml_path):
         """Create the yaml file and save it in under provided yaml_path.

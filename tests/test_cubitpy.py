@@ -64,7 +64,13 @@ def check_tmp_dir():
 
 
 def compare_yaml(
-    cubit, *, base_name=None, additional_identifier=None, rtol=1.0e-12, atol=1.0e-12
+    cubit,
+    *,
+    base_name=None,
+    additional_identifier=None,
+    rtol=1.0e-12,
+    atol=1.0e-12,
+    dump_yaml=True,
 ):
     """Write and compare the YAML file from a Cubit object with the reference
     YAML file.
@@ -82,6 +88,12 @@ def compare_yaml(
         Relative tolerance for numerical differences.
     atol: float
         Absolute tolerance for numerical differences.
+    dump_yaml: bool
+        If True, this function will dump the YAML input to the (temporary)
+        output directory. This is the default behavior. If False, no YAML file
+        will be dumped from this function and it is assumed that a YAML file
+        with the corresponding name has already been generated prior to
+        invoking this function.
     """
     # Determine test name
     if base_name is None:
@@ -101,7 +113,8 @@ def compare_yaml(
     # File paths
     ref_file = os.path.join(testing_input, compare_name + ".4C.yaml")
     out_file = os.path.join(testing_temp, compare_name + ".4C.yaml")
-    cubit.dump(out_file)
+    if dump_yaml:
+        cubit.dump(out_file)
 
     ref_input_file = FourCInput.from_4C_yaml(ref_file)
     out_input_file = FourCInput.from_4C_yaml(out_file)
@@ -1759,3 +1772,102 @@ def test_extrude_artery_of_aneurysm():
     assert ref_volume == pytest.approx(
         cubit.get_meshed_volume_or_area("volume", [volume.id()]), 1e-5
     )
+
+
+def test_yaml_with_exo_export():
+    """Test if exporting a yaml file with an exodus mesh works."""
+    # Set up Cubit.
+    cubit = CubitPy()
+
+    # Initialize geometry
+    cubit.cmd("brick x 1 y 1 z 1")
+    cubit.cmd("brick x 5e-1 y 5e-1 z 5e-1")
+    cubit.cmd("move Volume 2 x 75e-2 y 0 z 0")
+    cubit.cmd("volume 1 size {1e-1}")
+    cubit.cmd("volume 2 size {1e-1}")
+
+    # mesh the two geometries
+    cubit.cmd("mesh volume 1")
+    cubit.cmd("mesh volume 2")
+
+    # Assign nodesets, required for boundary conditions
+    cubit.add_node_set(
+        cubit.group(add_value="add surface 6"),
+        name="slave",
+        bc_type=cupy.bc_type.solid_to_solid_contact,
+        bc_description={
+            "InterfaceID": 1,
+            "Side": "Slave",
+        },
+    )
+    cubit.add_node_set(
+        cubit.group(add_value="add surface 10"),
+        name="master",
+        bc_type=cupy.bc_type.solid_to_solid_contact,
+        bc_description={
+            "InterfaceID": 1,
+            "Side": "Master",
+        },
+    )
+    cubit.add_node_set(
+        cubit.group(add_value="add surface 4"),
+        name="wall",
+        bc_type=cupy.bc_type.dirichlet,
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [1, 1, 1],
+            "VAL": [0, 0, 0],
+            "FUNCT": [None, None, None],
+        },
+    )
+    cubit.add_node_set(
+        cubit.group(add_value="add surface 12"),
+        name="pushing",
+        bc_type=cupy.bc_type.dirichlet,
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [1, 0, 0],
+            "VAL": [-1.0, 0.0, 0.0],
+            "FUNCT": [1, None, None],
+        },
+    )
+
+    # Add the element types
+    cubit.add_element_type(
+        cubit.group(add_value="add volume 1"),
+        el_type=cupy.element_type.hex8,
+        material={
+            "MAT": 1,
+        },
+        bc_description={
+            "KINEM": "nonlinear",
+        },
+    )
+    cubit.add_element_type(
+        cubit.group(add_value="add volume 2"),
+        el_type=cupy.element_type.hex8,
+        material={
+            "MAT": 2,
+        },
+        bc_description={
+            "KINEM": "nonlinear",
+        },
+    )
+
+    cubit.fourc_input.combine_sections(
+        {
+            "PROBLEM SIZE": {"DIM": 3},
+            "PROBLEM TYPE": {"PROBLEMTYPE": "Structure"},
+        }
+    )
+
+    # export the yaml input with exo mesh into a temporary directory
+    check_tmp_dir()
+    out_file_stem = os.path.join(testing_temp, "test_yaml_with_exo_export")
+    cubit.dump_with_exo_mesh(out_file_stem)
+
+    # make sure the directory also contains the exo mesh
+    assert os.path.exists(f"{out_file_stem}.exo")
+
+    # Compare the input file created for 4C.
+    compare_yaml(cubit, dump_yaml=False)
