@@ -30,9 +30,9 @@ import numpy as np
 from cubitpy.conf import cupy
 
 
-def add_node_sets(cubit, exo, input_file):
-    """Add the node sets contained in the cubit session/exo file to the
-    dat_lines."""
+def add_node_sets(cubit, exo, input_file, write_topology_information=True):
+    """Add the node sets contained in the cubit session/exo file to the yaml
+    file."""
 
     # If there are no node sets we can return immediately
     if len(cubit.node_sets) == 0:
@@ -69,28 +69,91 @@ def add_node_sets(cubit, exo, input_file):
             input_file[bc_section] = []
         bc_description["E"] = len(node_sets[geometry_type])
 
+        if not write_topology_information:
+            # when working with external .exo meshes, we do not write the
+            # topology information for the node sets explicitly, since 4C will
+            # deduce them based on the node set ids, when reading the .exo file
+            bc_description["ENTITY_TYPE"] = "node_set_id"
+
         input_file[bc_section].append(bc_description)
 
-    name_geometry_tuple = [
-        [cupy.geometry.vertex, "DNODE-NODE TOPOLOGY", "DNODE"],
-        [cupy.geometry.curve, "DLINE-NODE TOPOLOGY", "DLINE"],
-        [cupy.geometry.surface, "DSURF-NODE TOPOLOGY", "DSURFACE"],
-        [cupy.geometry.volume, "DVOL-NODE TOPOLOGY", "DVOL"],
-    ]
-    for geo, section_name, set_label in name_geometry_tuple:
-        if len(node_sets[geo]) > 0:
-            input_file[section_name] = []
-            for i_set, node_set in enumerate(node_sets[geo]):
-                node_set.sort()
-                for i_node in node_set:
-                    input_file[section_name].append(
-                        {
-                            "type": "NODE",
-                            "node_id": i_node,
-                            "d_type": set_label,
-                            "d_id": i_set + 1,
-                        }
-                    )
+    if write_topology_information:
+        # this is the default case: when the mesh is supposed to be contained
+        # in the .yaml file, we have to write the topology information of the
+        # node sets
+        name_geometry_tuple = [
+            [cupy.geometry.vertex, "DNODE-NODE TOPOLOGY", "DNODE"],
+            [cupy.geometry.curve, "DLINE-NODE TOPOLOGY", "DLINE"],
+            [cupy.geometry.surface, "DSURF-NODE TOPOLOGY", "DSURFACE"],
+            [cupy.geometry.volume, "DVOL-NODE TOPOLOGY", "DVOL"],
+        ]
+        for geo, section_name, set_label in name_geometry_tuple:
+            if len(node_sets[geo]) > 0:
+                input_file[section_name] = []
+                for i_set, node_set in enumerate(node_sets[geo]):
+                    node_set.sort()
+                    for i_node in node_set:
+                        input_file[section_name].append(
+                            {
+                                "type": "NODE",
+                                "node_id": i_node,
+                                "d_type": set_label,
+                                "d_id": i_set + 1,
+                            }
+                        )
+
+
+def add_exodus_geometry_section(cubit, input_file, rel_exo_file_path):
+    """Add the problem specific geometry section to the input file required to
+    directly read the mesh from an exodus file.
+
+    This section contains information about all element blocks as well as the
+    path to the exo file that contains the mesh.
+
+    Args
+    ----
+    cubit: CubitPy
+        The python object for managing the current Cubit session (exclusively
+        used in a read-only fashion).
+    input_file: dict
+        The input file dictionary that will be modified to include the geometry
+        section.
+    rel_exo_file_path: str
+        The relative path (as seen from the yaml input file) to the exodus
+        file that contains the mesh.
+    """
+    # Retrieve a list of the block IDs and the corresponding block data of the current session
+    element_block_ids = cubit.cubit.get_block_id_list()
+    element_blocks = cubit.blocks
+
+    # Iterate over all blocks and add them to the input file
+    for cur_block_id, cur_block_data in zip(element_block_ids, element_blocks):
+        # retrieve the name of the geometry section that this block belongs to
+        cur_geometry_section_key = cur_block_data[0].get_four_c_section() + " GEOMETRY"
+        # If the geometry section for this block does not exist yet, create it
+        if input_file.sections.get(cur_geometry_section_key) is None:
+            # add the geometry section to the input file
+            input_file[cur_geometry_section_key] = {
+                "FILE": rel_exo_file_path,
+                "SHOW_INFO": "detailed_summary",
+                "ELEMENT_BLOCKS": [],
+            }
+        # retrieve the fourc name for the element
+        four_c_element_name = cur_block_data[0].get_four_c_name()
+        # convert the material data from dict to string because 4C currently does not support a dict here
+        element_data_string = " ".join(
+            f"{key} {value}" for key, value in cur_block_data[1].items()
+        )
+        # add block id, fourc element name and element data string to the element block dictionary
+        element_block_dict = {
+            "ID": cur_block_id,
+            "ELEMENT_NAME": four_c_element_name,
+            "ELEMENT_DATA": element_data_string,
+        }
+        # append the dictionary with the element block information to the element block list
+        input_file[cur_geometry_section_key]["ELEMENT_BLOCKS"].append(
+            element_block_dict
+        )
 
 
 def get_element_connectivity_list(connectivity):
