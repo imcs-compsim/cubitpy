@@ -1759,3 +1759,59 @@ def test_extrude_artery_of_aneurysm():
     assert ref_volume == pytest.approx(
         cubit.get_meshed_volume_or_area("volume", [volume.id()]), 1e-5
     )
+
+
+def test_cmd_return():
+    """Test the cmd_return function of CubitPy."""
+
+    cubit = CubitPy()
+
+    center = cubit.cmd_return("create vertex 0 0 0", cupy.geometry.vertex)
+    assert center.get_geometry_type() == cupy.geometry.vertex
+    assert center.id() == 1
+
+    arc_1 = cubit.cmd_return(
+        f"create curve arc center vertex {center.id()} radius 1 full",
+        cupy.geometry.curve,
+    )
+    assert arc_1.get_geometry_type() == cupy.geometry.curve
+    assert arc_1.id() == 1
+
+    center = cubit.cmd_return("create vertex 0.1 0 0", cupy.geometry.vertex)
+    assert center.get_geometry_type() == cupy.geometry.vertex
+    assert center.id() == 3
+
+    arc_2 = cubit.cmd_return(
+        f"create curve arc center vertex {center.id()} radius 2 full",
+        cupy.geometry.curve,
+    )
+    assert arc_2.get_geometry_type() == cupy.geometry.curve
+    assert arc_2.id() == 2
+
+    # We check the volume here as well, as in CoreForm a sheet body is created here that Cubit
+    # internally handles as a volume. But, we don't want this volume returned here.
+    create_surface_geometry = cubit.cmd_return(
+        f"create surface curve {arc_1.id()} {arc_2.id()}",
+        [cupy.geometry.surface, cupy.geometry.volume],
+        simplify_results=False,
+    )
+    for surface in create_surface_geometry[cupy.geometry.surface]:
+        assert surface.get_geometry_type() == cupy.geometry.surface
+    assert [item.id() for item in create_surface_geometry[cupy.geometry.surface]] == [1]
+    assert len(create_surface_geometry[cupy.geometry.volume]) == 0
+
+    sweep_geometry = cubit.cmd_return(
+        f"sweep surface {surface.id()} perpendicular distance 2",
+        [
+            cupy.geometry.vertex,
+            cupy.geometry.curve,
+            cupy.geometry.surface,
+            cupy.geometry.volume,
+        ],
+        simplify_results=False,
+    )
+    assert len(sweep_geometry) == 4
+    assert [item.id() for item in sweep_geometry[cupy.geometry.vertex]] == [5, 6]
+    assert [item.id() for item in sweep_geometry[cupy.geometry.curve]] == [3, 4, 5, 6]
+    assert [item.id() for item in sweep_geometry[cupy.geometry.surface]] == [2, 3, 4]
+    assert [item.id() for item in sweep_geometry[cupy.geometry.volume]] == [1]
