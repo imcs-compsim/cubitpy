@@ -367,6 +367,7 @@ class CubitPy(object):
         geometry_type: GeometryType | list[GeometryType],
         *,
         simplify_results: bool = True,
+        filter_sheet_bodies: bool = True,
     ):
         """Run a cubit command and return created geometry objects.
 
@@ -374,6 +375,7 @@ class CubitPy(object):
             cmd: The cubit command to run.
             geometry_type: The geometry type(s) that should be checked for new geometries.
             simplify_results: If the results shall be simplified.
+            filter_sheet_bodies: If volumes that are sheet bodies should be ignored.
 
         Returns:
             The geometry objects created by the command.
@@ -393,6 +395,17 @@ class CubitPy(object):
             for geometry in geometry_type
         }
 
+        # For CoreForm, we need to check that the volumes are not sheet bodies
+        if cupy.is_coreform() and filter_sheet_bodies:
+            if cupy.geometry.volume in geometry_ids_before:
+                volume_ids_before = geometry_ids_before[cupy.geometry.volume]
+                volume_ids_before_no_sheet_bodies = {
+                    id for id in volume_ids_before if not self.is_sheet_body(id)
+                }
+                geometry_ids_before[cupy.geometry.volume] = (
+                    volume_ids_before_no_sheet_bodies
+                )
+
         # Run the command.
         self.cmd(cmd)
 
@@ -401,7 +414,16 @@ class CubitPy(object):
         for geometry, ids_before in geometry_ids_before.items():
             ids_after = set(self.get_entities(geometry.get_cubit_string()))
             ids_new = ids_after - ids_before
+
+            if (
+                cupy.is_coreform()
+                and filter_sheet_bodies
+                and geometry == cupy.geometry.volume
+            ):
+                ids_new = {id for id in ids_new if not self.is_sheet_body(id)}
+
             geometry_objects = self.get_items(geometry, item_ids=ids_new)
+
             if simplify_results and len(geometry_objects) < 2:
                 if len(geometry_objects) == 1:
                     create_objects[geometry] = geometry_objects[0]

@@ -1788,12 +1788,17 @@ def test_cmd_return():
     assert arc_2.get_geometry_type() == cupy.geometry.curve
     assert arc_2.id() == 2
 
-    surface = cubit.cmd_return(
+    # We check the volume here as well, as in CoreForm a sheet body is created here that Cubit
+    # internally handles as a volume. But, we don't want this volume returned here.
+    create_surface_geometry = cubit.cmd_return(
         f"create surface curve {arc_1.id()} {arc_2.id()}",
-        cupy.geometry.surface,
+        [cupy.geometry.surface, cupy.geometry.volume],
+        simplify_results=False,
     )
-    assert surface.get_geometry_type() == cupy.geometry.surface
-    assert surface.id() == 1
+    for surface in create_surface_geometry[cupy.geometry.surface]:
+        assert surface.get_geometry_type() == cupy.geometry.surface
+    assert [item.id() for item in create_surface_geometry[cupy.geometry.surface]] == [1]
+    assert len(create_surface_geometry[cupy.geometry.volume]) == 0
 
     sweep_geometry = cubit.cmd_return(
         f"sweep surface {surface.id()} perpendicular distance 2",
