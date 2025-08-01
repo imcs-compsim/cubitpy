@@ -28,7 +28,7 @@ import warnings
 
 from fourcipp.fourc_input import FourCInput
 
-from cubitpy.conf import cupy
+from cubitpy.conf import GeometryType, cupy
 from cubitpy.cubit_group import CubitGroup
 from cubitpy.cubit_to_fourc_input import get_input_file_with_mesh
 from cubitpy.cubit_wrapper.cubit_wrapper_host import CubitConnect
@@ -360,6 +360,63 @@ class CubitPy(object):
 
         self.cubit.reset()
         self._default_cubit_variables()
+
+    def cmd_return(
+        self,
+        cmd: str,
+        geometry_type: GeometryType | list[GeometryType],
+        *,
+        simplify_results: bool = True,
+    ):
+        """Run a cubit command and return created geometry objects.
+
+        Args:
+            cmd: The cubit command to run.
+            geometry_type: The geometry type(s) that should be checked for new geometries.
+            simplify_results: If the results shall be simplified.
+
+        Returns:
+            The geometry objects created by the command.
+            If simplify_results is False, a dictionary with the geometry type as key
+            and a list of created objects as value is returned.
+            If simplify_results is True and only one geometry type is
+            requested, a single object is returned. Also, if only one item is created
+            for a geometry, it will not be stored as a list, but as the plain object.
+        """
+
+        if not isinstance(geometry_type, list):
+            geometry_type = [geometry_type]
+
+        # Store the already existing ids for all requested geometry types.
+        geometry_ids_before = {
+            geometry: set(self.get_entities(geometry.get_cubit_string()))
+            for geometry in geometry_type
+        }
+
+        # Run the command.
+        self.cmd(cmd)
+
+        # Get the objects that were created by the command.
+        create_objects = {}
+        for geometry, ids_before in geometry_ids_before.items():
+            ids_after = set(self.get_entities(geometry.get_cubit_string()))
+            ids_new = ids_after - ids_before
+            geometry_objects = self.get_items(geometry, item_ids=ids_new)
+            if simplify_results and len(geometry_objects) < 2:
+                if len(geometry_objects) == 1:
+                    create_objects[geometry] = geometry_objects[0]
+                else:
+                    raise ValueError(
+                        f"The option simplify_results is activated, but for {geometry} "
+                        "no items were created. The command was: {cmd}"
+                    )
+            else:
+                create_objects[geometry] = geometry_objects
+
+        if simplify_results and len(create_objects) == 1:
+            return list(create_objects.values())[0]
+        else:
+            return create_objects
 
     def display_in_cubit(self, labels=[], delay=0.5, testing=False):
         """Save the state to a cubit file and open cubit with that file.
