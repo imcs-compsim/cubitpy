@@ -1,0 +1,21 @@
+PROBLEM TYPE:
+  PROBLEMTYPE: "Fluid_Structure_Interaction"
+PROBLEM SIZE:
+  DIM: 3
+STRUCTURAL DYNAMIC:
+  INT_STRATEGY: "Standard"
+  LINEAR_SOLVER: 3
+STRUCTURE GEOMETRY:
+  FILE: "test_yaml_with_exo_export_fsi.exo"
+  SHOW_INFO: "detailed_summary"
+  ELEMENT_BLOCKS:
+    - ID: 1
+      ELEMENT_NAME: "SOLID"
+      ELEMENT_DATA: "MAT 1 KINEM nonlinear TECH eas_full"
+FLUID GEOMETRY:
+  FILE: "test_yaml_with_exo_export_fsi.exo"
+  SHOW_INFO: "detailed_summary"
+  ELEMENT_BLOCKS:
+    - ID: 2
+      ELEMENT_NAME: "FLUID"
+      ELEMENT_DATA: "MAT 2 NA ALE"

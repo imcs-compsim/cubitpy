@@ -26,11 +26,16 @@ import subprocess  # nosec B404
 import time
 import warnings
 
+import netCDF4
 from fourcipp.fourc_input import FourCInput
 
 from cubitpy.conf import cupy
 from cubitpy.cubit_group import CubitGroup
-from cubitpy.cubit_to_fourc_input import get_input_file_with_mesh
+from cubitpy.cubit_to_fourc_input import (
+    add_exodus_geometry_section,
+    add_node_sets,
+    get_input_file_with_mesh,
+)
 from cubitpy.cubit_wrapper.cubit_wrapper_host import CubitConnect
 
 
@@ -329,21 +334,46 @@ class CubitPy(object):
         """Export the mesh."""
         self.cubit.cmd('export mesh "{}" dimension 3 overwrite'.format(path))
 
-    def dump(self, yaml_path):
+    def dump(self, yaml_path, mesh_in_exo=False):
         """Create the yaml file and save it in under provided yaml_path.
 
         Args
         ----
         yaml_path: str
             Path where the input file will be saved
+        mesh_in_exo: bool
+            If True, the mesh will be exported in exodus format and the input file
+            will contain a reference to the exodus file. If False, the mesh will
+            be exported in the 4C format and the input file will contain the mesh
+            directly in the yaml file.
+            Default is False.
         """
 
         # Check if output path exists
-        dat_dir = os.path.dirname(os.path.abspath(yaml_path))
-        if not os.path.exists(dat_dir):
-            raise ValueError("Path {} does not exist!".format(dat_dir))
+        yaml_dir = os.path.dirname(os.path.abspath(yaml_path))
+        if not os.path.exists(yaml_dir):
+            raise ValueError("Path {} does not exist!".format(yaml_dir))
 
-        input_file = get_input_file_with_mesh(self)
+        if mesh_in_exo:
+            # Determine the path stem: Strip the '(.4C).yaml' suffix
+            # (if the filename does not contain '.4C' the second call to
+            # 'removesuffix' won't alter the string at all)
+            path_stem = yaml_path.removesuffix(".yaml").removesuffix(".4C")
+            # Export the mesh in exodus format
+            exo_path = path_stem + ".exo"
+            self.export_exo(exo_path)
+            # parse the exodus file
+            exo = netCDF4.Dataset(exo_path)
+            # create a deep copy of the input_file
+            input_file = self.fourc_input.copy()
+            # Add the node sets
+            add_node_sets(self, exo, input_file, write_topology_information=False)
+            # Add the problem geometry section
+            rel_exo_path = os.path.relpath(exo_path, start=yaml_dir)
+            add_exodus_geometry_section(self, input_file, rel_exo_path)
+        else:
+            input_file = get_input_file_with_mesh(self)
+        # Export the input file in YAML format
         input_file.dump(yaml_path)
 
     def group(self, **kwargs):

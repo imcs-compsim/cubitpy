@@ -1,0 +1,54 @@
+PROBLEM SIZE:
+  DIM: 3
+PROBLEM TYPE:
+  PROBLEMTYPE: "Structure"
+DESIGN SURF MORTAR CONTACT CONDITIONS 3D:
+  - InterfaceID: 1
+    Side: "Slave"
+    E: 1
+    ENTITY_TYPE: "node_set_id"
+  - InterfaceID: 1
+    Side: "Master"
+    E: 2
+    ENTITY_TYPE: "node_set_id"
+DESIGN SURF DIRICH CONDITIONS:
+  - NUMDOF: 3
+    ONOFF:
+      - 1
+      - 1
+      - 1
+    VAL:
+      - 0
+      - 0
+      - 0
+    FUNCT:
+      - null
+      - null
+      - null
+    E: 3
+    ENTITY_TYPE: "node_set_id"
+  - NUMDOF: 3
+    ONOFF:
+      - 1
+      - 0
+      - 0
+    VAL:
+      - -1.0
+      - 0.0
+      - 0.0
+    FUNCT:
+      - 1
+      - null
+      - null
+    E: 4
+    ENTITY_TYPE: "node_set_id"
+STRUCTURE GEOMETRY:
+  FILE: "test_yaml_with_exo_export.exo"
+  SHOW_INFO: "detailed_summary"
+  ELEMENT_BLOCKS:
+    - ID: 1
+      ELEMENT_NAME: "SOLID"
+      ELEMENT_DATA: "MAT 1 KINEM nonlinear"
+    - ID: 2
+      ELEMENT_NAME: "SOLID"
+      ELEMENT_DATA: "MAT 2 KINEM nonlinear"
