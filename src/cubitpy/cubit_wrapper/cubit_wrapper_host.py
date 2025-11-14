@@ -24,6 +24,7 @@ interpreter and the main python interpreter."""
 
 import atexit
 import os
+from pathlib import Path
 
 import execnet
 import numpy as np
@@ -39,100 +40,112 @@ class CubitConnect(object):
     It is possible to send function calls to that interpreter and
     receive the output.
     """
-
+    
     def __init__(
         self,
         *,
         cubit_args=None,
         cubit_lib=None,
         interpreter=None,
+        # TEST SWITCH (hardcoded SSH for now)
+        use_ssh: bool = False,
     ):
-        """Initialize the connection between the client (cubit) python
-        interpreter and this one. Also load the cubit module in the remote
-        interpreter.
-
-        Args
-        ----
-        cubit_args: [str]
-            List of arguments to pass to cubit.init
-        cubit_lib: str
-            Path to the directory containing the cubit python library.
-                - For Linux systems this is the path where the `cubit`
-                script is located (`bin` should be a subfolder of this path).
-                - For MacOS this is the `.../Cubit.app/Contents/MacOS`) folder.
-        interpreter: str
-            Python interpreter to be used for running cubit.
-        """
-
-        if interpreter is None:
-            interpreter = f"popen//python={cupy.get_cubit_interpreter()}"
-
         if cubit_lib is None:
             cubit_lib = cupy.get_cubit_lib_path()
 
-        # Set up the client python interpreter
-        self.gw = execnet.makegateway(interpreter)
+        if not use_ssh:
+            # === LOCAL (unchanged) ===
+            if interpreter is None:
+                interpreter = f"popen//python={cupy.get_cubit_interpreter()}"
+            self.gw = execnet.makegateway(interpreter)
+            self.gw.reconfigure(py3str_as_py2str=True)
+
+            client_python_file = os.path.join(
+                os.path.dirname(__file__), "cubit_wrapper_client.py"
+            )
+            with open(client_python_file, "r", encoding="utf-8") as f:
+                data = f.read()
+
+            self.channel = self.gw.remote_exec(data)
+
+            parameters = {"__file__": __file__, "cubit_lib_path": cubit_lib}
+            if cubit_args is None:
+                arguments = ["cubit", "-information", "Off", "-nojournal", "-noecho"]
+            else:
+                arguments = ["cubit"] + cubit_args
+
+            # attach temp log if not provided
+            log_given = any(str(a).startswith("-log") for a in arguments)
+            self.log_check = False
+            if not log_given:
+                arguments.extend(["-log", cupy.temp_log])
+                parameters["tty"] = cupy.temp_log
+                self.log_check = True
+
+            self.send_and_return(parameters)
+            cubit_id = self.send_and_return(["init", arguments])
+            self.cubit = CubitObjectMain(self, cubit_id)
+            atexit.register(lambda: self.gw.exit())
+            return
+
+        # === SSH (HARD-CODED FOR TESTING) ===
+        ssh_user = 
+        ssh_host = 
+        win_cubit_bin = r"C:\Coreform_Cubit_2025_8\bin"
+        win_py = os.path.join(win_cubit_bin, "python3", "python.exe")
+
+        # 1) make gateway
+        self.gw = execnet.makegateway(f"ssh={ssh_user}@{ssh_host}//python={win_py}")
         self.gw.reconfigure(py3str_as_py2str=True)
 
-        # Load the main code in the client python interpreter
-        client_python_file = os.path.join(
-            os.path.dirname(__file__), "cubit_wrapper_client.py"
-        )
-        with open(client_python_file, "r") as myfile:
-            data = myfile.read()
+        # 2) load client & utility code from package
+        client_path = Path(__file__).with_name("cubit_wrapper_client.py")
+        util_path   = Path(__file__).with_name("cubit_wrapper_utility.py")
+        client_code = client_path.read_text(encoding="utf-8")
+        util_code   = util_path.read_text(encoding="utf-8")
 
-        # Set up the connection channel
-        self.channel = self.gw.remote_exec(data)
+        # 3) remote prologue: DLL path + sys.path + preload utility, then exec client
+        prologue = r"""
+import sys, os, types
+bin_dir, py_dir, site_pkgs, client_code, util_code, logical_client_path = channel.receive()
+try:
+    if hasattr(os, "add_dll_directory"):
+        os.add_dll_directory(bin_dir)
+    else:
+        os.environ["PATH"] = bin_dir + os.pathsep + os.environ.get("PATH","")
+except Exception:
+    pass
+for p in (bin_dir, py_dir, site_pkgs):
+    if p and p not in sys.path:
+        sys.path.insert(0, p)
+util_mod = types.ModuleType("cubit_wrapper_utility")
+exec(util_code, util_mod.__dict__)
+sys.modules["cubit_wrapper_utility"] = util_mod
+exec(compile(client_code, logical_client_path, "exec"))
+"""
+        self.channel = self.gw.remote_exec(prologue)
+        py_dir    = os.path.join(win_cubit_bin, "python3")
+        site_pkgs = os.path.join(py_dir, "Lib", "site-packages")
+        self.channel.send((win_cubit_bin, py_dir, site_pkgs, client_code, util_code, str(client_path)))
 
-        # Send parameters to the client interpreter
-        parameters = {}
-        parameters["__file__"] = __file__
-        parameters["cubit_lib_path"] = cubit_lib
-
-        # Arguments for cubit
+        # 4) handshake with the real client
+        parameters = {"__file__": str(client_path), "cubit_lib_path": win_cubit_bin}
         if cubit_args is None:
-            arguments = [
-                "cubit",
-                # "-log",  # Write the log to a file
-                # "dev/null",
-                "-information",  # Do not output information of cubit
-                "Off",
-                "-nojournal",  # Do write a journal file
-                "-noecho",  # Do not output commands used in cubit
-            ]
+            arguments = ["cubit", "-information", "Off", "-nojournal", "-noecho"]
         else:
             arguments = ["cubit"] + cubit_args
 
-        # Check if a log file was given in the cubit arguments
-        for arg in arguments:
-            if arg.startswith("-log="):
-                log_given = True
-                break
-        else:
-            log_given = False
-
+        # SSH mode: do NOT attach local log or read it (paths differ across OSes)
         self.log_check = False
+        # If you ever want a remote log on Windows for debugging, you could do:
+        # arguments += ["-log", r"C:\Users\%USERNAME%\AppData\Local\Temp\cubitpy_win_log.txt"]
+        # but still keep self.log_check = False so the host won’t try to read it.
 
-        if not log_given:
-            # Write the log to a temporary file and check the contents after each call to cubit
-            arguments.extend(["-log", cupy.temp_log])
-            parameters["tty"] = cupy.temp_log
-            self.log_check = True
-
-        # Send the parameters to the client interpreter
-        self.send_and_return(parameters)
-
-        # Initialize cubit in the client and create the linking object here
+        self.send_and_return(parameters)                  # expect None ack internally
         cubit_id = self.send_and_return(["init", arguments])
         self.cubit = CubitObjectMain(self, cubit_id)
+        atexit.register(lambda: self.gw.exit())
 
-        def cleanup_execnet_gateway():
-            """We need to register a function called at interpreter shutdown
-            that ensures that the execnet connection is closed first,
-            otherwise, we get a runtime error during shutdown."""
-            self.cubit.cubit_connect.gw.exit()
-
-        atexit.register(cleanup_execnet_gateway)
 
     def send_and_return(self, argument_list):
         """Send arguments to the python client and collect the return values.
