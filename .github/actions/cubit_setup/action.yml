@@ -28,6 +28,7 @@ runs:
         fi
         # We need these packages for cubit to work
         sudo apt update
+        sudo apt upgrade
         sudo apt install -y libglu1-mesa ffmpeg libsm6 libxext6 libgl1
         # Download cubit and extract it
         cd ${GITHUB_WORKSPACE}

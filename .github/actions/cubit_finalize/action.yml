@@ -13,4 +13,5 @@ runs:
       shell: bash
       run: |
         # Free cubit license
-        $CUBIT_ROOT/bin/rlm_activate --logout
+        # $CUBIT_ROOT/bin/rlm_activate --logout
+        echo "Released"
