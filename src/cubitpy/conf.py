@@ -28,6 +28,8 @@ import os
 import shutil
 from sys import platform
 
+import yaml
+
 from cubitpy.cubitpy_types import (
     BoundaryConditionType,
     CubitItems,
@@ -86,6 +88,32 @@ class CubitOptions(object):
     def get_cubit_root_path(**kwargs):
         """Get Path to cubit root directory."""
         return get_path("CUBIT_ROOT", os.path.isdir, **kwargs)
+
+    @staticmethod
+    def get_cubit_remote_config_filepath():
+        """Return path to remote config if it exists, else None."""
+        return get_path("CUBIT_REMOTE_CONFIG_FILE", os.path.isfile, throw_error=False)
+
+    @staticmethod
+    def get_cubit_remote_config():
+        """Get remote cubit config from YAML file."""
+        path = cupy.get_cubit_remote_config_filepath()
+        if path is None:
+            raise RuntimeError("CUBIT_REMOTE_CONFIG_FILE not set or file not found")
+
+        with open(path) as f:
+            data = yaml.safe_load(f)
+
+        if "remote" not in data:
+            raise RuntimeError("Missing 'remote' section in YAML config")
+
+        required = ["user", "host", "win_cubit_root", "win_temp_dir"]
+        missing = [k for k in required if k not in data["remote"]]
+        if missing:
+            raise RuntimeError(f"Missing keys: {', '.join(missing)}")
+
+        cfg = data["remote"]
+        return cfg["user"], cfg["host"], cfg["win_cubit_root"], cfg["win_temp_dir"]
 
     @classmethod
     def get_cubit_exe_path(cls, **kwargs):
@@ -158,6 +186,11 @@ class CubitOptions(object):
             return False
         else:
             return True
+
+    @classmethod
+    def is_remote(cls):
+        """Return True if a remote config path is defined."""
+        return cls.get_cubit_remote_config_filepath() is not None
 
 
 # Global object with options for cubitpy.
