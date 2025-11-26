@@ -38,14 +38,15 @@ testing_external_geometry = os.path.join(testing_path, "external-geometry")
 
 # CubitPy imports.
 from cubitpy.conf import cupy
-from cubitpy.cubit_utility import get_surface_center, import_fluent_geometry
 from cubitpy.cubitpy import CubitPy
 from cubitpy.geometry_creation_functions import (
     create_brick_by_corner_points,
     create_parametric_surface,
     create_spline_interpolation_curve,
 )
+from cubitpy.geometry_utils import get_surface_center, import_fluent_geometry
 from cubitpy.mesh_creation_functions import create_brick, extrude_mesh_normal_to_surface
+from cubitpy.utils import get_node_ids
 
 # Global variable if this test is run by GitLab.
 if "TESTING_GITHUB" in os.environ.keys() and os.environ["TESTING_GITHUB"] == "1":
@@ -1078,14 +1079,14 @@ def test_point_coupling():
 
     # Sort the node IDs, by doing so the results are independent of the ordering
     # of the node IDs returned by cubit (which can change between versions).
-    node_ids_1 = surf[0].get_node_ids()
+    node_ids_1 = get_node_ids(cubit, surf[0])
     node_ids_1.sort()
-    node_ids_2 = surf[1].get_node_ids()
+    node_ids_2 = get_node_ids(cubit, surf[1])
     node_ids_2.sort()
 
     for node_id_1 in node_ids_1:
         coordinates_1 = np.array(cubit.get_nodal_coordinates(node_id_1))
-        for node_id_2 in surf[1].get_node_ids():
+        for node_id_2 in get_node_ids(cubit, surf[1]):
             coordinates_2 = cubit.get_nodal_coordinates(node_id_2)
             if np.linalg.norm(coordinates_2 - coordinates_1) < cupy.eps_pos:
                 cubit.add_node_set(
@@ -1442,19 +1443,19 @@ def test_get_node_id_function():
     brick = create_brick(cubit, 1, 1, 1, mesh_interval=[2, 2, 2])
 
     # Compare volume, surface, curve and vertex nodes.
-    node_ids = brick.volumes()[0].get_node_ids()
+    node_ids = get_node_ids(cubit, brick.volumes()[0])
     node_ids.sort()
     assert node_ids == list(range(1, 28))
 
-    node_ids = brick.surfaces()[3].get_node_ids()
+    node_ids = get_node_ids(cubit, brick.surfaces()[3])
     node_ids.sort()
     assert node_ids == [4, 6, 7, 13, 15, 16, 19, 22, 23]
 
-    node_ids = brick.curves()[4].get_node_ids()
+    node_ids = get_node_ids(cubit, brick.curves()[4])
     node_ids.sort()
     assert node_ids == [10, 11, 12]
 
-    node_ids = brick.vertices()[7].get_node_ids()
+    node_ids = get_node_ids(cubit, brick.vertices()[7])
     node_ids.sort()
     assert node_ids == [15]
 

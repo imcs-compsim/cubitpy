@@ -19,16 +19,17 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-"""Utility functions for the use of cubitpy."""
+"""Utility functions for the use of geometries in cubit."""
 
 from cubitpy.conf import cupy
+from cubitpy.utils import get_geometry_type
 
 
 def get_surface_center(surf):
     """Get a 3D point that has the local coordinated on the surface of (0,0),
     with the parameter space being ([-1,1],[-1,1])."""
 
-    if not surf.get_geometry_type() == cupy.geometry.surface:
+    if not get_geometry_type(surf) == cupy.geometry.surface:
         raise TypeError("Did not expect {}".format(type(surf)))
 
     range_u = surf.get_param_range_U()
