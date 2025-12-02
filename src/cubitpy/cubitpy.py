@@ -27,10 +27,9 @@ import shlex
 import subprocess  # nosec B404
 import time
 import warnings
+from pathlib import PureWindowsPath
 
 import netCDF4
-
-from pathlib import PureWindowsPath
 from fourcipp.fourc_input import FourCInput
 
 from cubitpy.conf import GeometryType, cupy
@@ -743,7 +742,9 @@ class CubitPy(object):
             raise RuntimeError(f"Remote OS query failed: {resp!r}")
         return resp
 
-    def transfer_file_from_remote(self, remote_path: PureWindowsPath, local_path: str) -> str:
+    def transfer_file_from_remote(
+        self, remote_path: PureWindowsPath, local_path: str
+    ) -> str:
         """Copy a file from the remote machine to the local host."""
         ssh_user, ssh_host, *_ = cupy.get_cubit_remote_config()
 
@@ -758,7 +759,7 @@ class CubitPy(object):
         print(f"[transfer] Running: {' '.join(cmd)}")
 
         try:
-            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+            subprocess.check_output(cmd, stderr=subprocess.STDOUT)  # nosec B603
         except subprocess.CalledProcessError as e:
             output = e.output.decode("utf-8", "replace")
             raise RuntimeError(
@@ -771,4 +772,3 @@ class CubitPy(object):
 
         print(f"[transfer] Copy OK: {remote_for_scp} → {local_path}")
         return local_path
-
