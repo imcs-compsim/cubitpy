@@ -24,6 +24,8 @@ interpreter and the main python interpreter."""
 
 import atexit
 import os
+import sys
+import traceback
 from pathlib import Path
 
 import execnet
@@ -164,8 +166,14 @@ class CubitConnect(object):
         try:
             self.channel.send(argument_list)
             return self.channel.receive()
-        # ToDo: Print remote error message?
-        except:
+        except Exception as e:
+            print(
+                "[CubitConnect.send_and_return] Remote call failed.\n"
+                f"  payload : {argument_list!r}\n"
+                f"  error   : {e!r}",
+                file=sys.stderr,
+            )
+            traceback.print_exc(file=sys.stderr)
             return None
 
     def get_attribute(self, cubit_object, name):
