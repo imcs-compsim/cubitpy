@@ -248,10 +248,6 @@ while 1:
         channel.send(None)
 
     elif receive[0] == "create_remote_temp_dir":
-        """Create (if required) a temporary directory on the remote side.
-
-        Returns the absolute directory path as a string.
-        """
         if len(receive) < 2:
             raise ValueError("create_remote_temp_dir expects a path argument")
 
@@ -261,7 +257,7 @@ while 1:
             os.makedirs(tmp_path, exist_ok=True)
         except Exception as e:
             raise RuntimeError(
-                f"Failed to create remote temp directory '{tmp_path}': {e}"
+                "Failed to create remote temp directory '%s': %s" % (tmp_path, e)
             )
 
         channel.send(tmp_path)
@@ -273,6 +269,7 @@ while 1:
 
     elif receive[0] == "write_open_state_journal":
         # receive = ["write_open_state_journal", state_cub, journal_path, active_labels]
+        import io
         import os
         import traceback
 
@@ -307,11 +304,11 @@ while 1:
             if journal_dir and not os.path.isdir(journal_dir):
                 os.makedirs(journal_dir, exist_ok=True)
 
-            with open(journal_path, "w", encoding="utf-8") as f:
-                f.write(f'open "{state_cub}"\n')
+            with io.open(journal_path, "w", encoding="utf-8") as f:
+                f.write('open "%s"\n' % state_cub)
                 for item in all_labels:
                     on_off = "On" if item in active_labels else "Off"
-                    f.write(f"label {item} {on_off}\n")
+                    f.write("label %s %s\n" % (item, on_off))
                 f.write("display\n")
 
             debug["journal_written"] = True
@@ -321,11 +318,9 @@ while 1:
             )
             channel.send({"status": "ok", "debug": debug})
         except Exception as e:
-            debug["exception_type"] = type(e).__name__
-            debug["exception_message"] = str(e)
+            debug["exception"] = str(e)
             debug["traceback"] = traceback.format_exc()
             channel.send({"status": "error", "debug": debug})
-
     else:
         raise ValueError('The case of "{}" is not implemented!'.format(receive[0]))
 
