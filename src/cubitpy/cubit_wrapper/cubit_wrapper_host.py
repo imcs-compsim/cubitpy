@@ -167,10 +167,15 @@ class CubitConnect(object):
             self.channel.send(argument_list)
             return self.channel.receive()
         except Exception as e:
+            # Ignore expected shutdown errors when the channel is already closed
+            if "cannot send to" in str(e) or "closed" in str(e):
+                return None
+
+            # Otherwise print debugging info
             print(
                 "[CubitConnect.send_and_return] Remote call failed.\n"
-                f"  payload : {argument_list!r}\n"
-                f"  error   : {e!r}",
+                "  payload : {!r}\n"
+                "  error   : {!r}".format(argument_list, e),
                 file=sys.stderr,
             )
             traceback.print_exc(file=sys.stderr)
