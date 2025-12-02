@@ -88,6 +88,11 @@ class CubitOptions(object):
     @staticmethod
     def get_cubit_root_path(**kwargs):
         """Get Path to cubit root directory."""
+        if cupy.is_remote():
+            print(
+                "[WARNING] Cubitpy is running in remote mode. "
+                "The CUBIT_ROOT environment variable is ignored."
+            )
         return get_path("CUBIT_ROOT", os.path.isdir, **kwargs)
 
     @staticmethod
@@ -97,24 +102,41 @@ class CubitOptions(object):
 
     @classmethod
     def get_cubit_remote_config(cls):
-        """Get remote cubit config from YAML file."""
+        """Get remote Cubit config from YAML file."""
+        TEMPLATE = (
+            "\nExpected YAML format:\n"
+            "----------------------------------------\n"
+            "remote:\n"
+            '  user: "<username>"\n'
+            '  host: "<hostname_or_ip>"\n'
+            "  remote_cubit_root: <remote_cubit_root_path_in_remote_path_syntax>\n"
+            "----------------------------------------\n"
+        )
+
+        def fail(msg):
+            """Helper to raise error with template."""
+            raise RuntimeError(msg + TEMPLATE)
+
         path = cls.get_cubit_remote_config_filepath()
         if path is None:
-            raise RuntimeError("CUBIT_REMOTE_CONFIG_FILE not set or file not found")
+            fail("CUBIT_REMOTE_CONFIG_FILE: file not found.")
 
-        with open(path) as f:
-            data = yaml.safe_load(f)
+        try:
+            with open(path) as f:
+                data = yaml.safe_load(f)
+        except Exception as e:
+            fail(f"Failed to read YAML file: {e}")
 
-        if "remote" not in data:
-            raise RuntimeError("Missing 'remote' section in YAML config")
+        if not isinstance(data, dict) or "remote" not in data:
+            fail("Missing 'remote' section in YAML config.")
 
-        required = ["user", "host", "win_cubit_root"]
+        required = ["user", "host", "remote_cubit_root"]
         missing = [k for k in required if k not in data["remote"]]
         if missing:
-            raise RuntimeError(f"Missing keys: {', '.join(missing)}")
+            fail(f"Missing keys: {', '.join(missing)}")
 
         cfg = data["remote"]
-        return cfg["user"], cfg["host"], cfg["win_cubit_root"]
+        return cfg["user"], cfg["host"], cfg["remote_cubit_root"]
 
     @classmethod
     def get_cubit_exe_path(cls, **kwargs):

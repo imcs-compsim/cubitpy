@@ -81,8 +81,8 @@ class CubitConnect(object):
             atexit.register(lambda: self.gw.exit())
             return
         else:  # cubit on remote machine via SSH
-            ssh_user, ssh_host, win_cubit_root = cupy.get_cubit_remote_config()
-            win_py = os.path.join(win_cubit_root, "python3", "python.exe")
+            ssh_user, ssh_host, remote_cubit_root = cupy.get_cubit_remote_config()
+            win_py = os.path.join(remote_cubit_root, "python3", "python.exe")
 
             # make gateway
             self.gw = execnet.makegateway(f"ssh={ssh_user}@{ssh_host}//python={win_py}")
@@ -116,11 +116,11 @@ class CubitConnect(object):
 
             # send prologue args
             self.channel = self.gw.remote_exec(prologue)
-            py_dir = os.path.join(win_cubit_root, "python3")
+            py_dir = os.path.join(remote_cubit_root, "python3")
             site_pkgs = os.path.join(py_dir, "Lib", "site-packages")
             self.channel.send(
                 (
-                    win_cubit_root,
+                    remote_cubit_root,
                     py_dir,
                     site_pkgs,
                     client_code,
@@ -132,7 +132,7 @@ class CubitConnect(object):
             # handshake with the client
             parameters = {
                 "__file__": str(client_path),
-                "cubit_lib_path": win_cubit_root,
+                "cubit_lib_path": remote_cubit_root,
             }
             if cubit_args is None:
                 arguments = ["cubit", "-information", "Off", "-nojournal", "-noecho"]
