@@ -247,6 +247,30 @@ while 1:
         # Return to python host
         channel.send(None)
 
+    elif receive[0] == "create_remote_temp_dir":
+        """Create (if required) a temporary directory on the remote side.
+
+        Returns the absolute directory path as a string.
+        """
+        if len(receive) < 2:
+            raise ValueError("create_remote_temp_dir expects a path argument")
+
+        tmp_path = receive[1]
+
+        try:
+            os.makedirs(tmp_path, exist_ok=True)
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to create remote temp directory '{tmp_path}': {e}"
+            )
+
+        channel.send(tmp_path)
+
+    elif receive[0] == "get_remote_os":
+        import platform
+
+        channel.send(platform.system())
+
     else:
         raise ValueError('The case of "{}" is not implemented!'.format(receive[0]))
 

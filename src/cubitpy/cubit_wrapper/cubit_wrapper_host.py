@@ -164,6 +164,7 @@ class CubitConnect(object):
         try:
             self.channel.send(argument_list)
             return self.channel.receive()
+        # ToDo: Print remote error message?
         except:
             return None
 

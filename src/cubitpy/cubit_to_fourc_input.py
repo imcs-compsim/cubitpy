@@ -204,10 +204,24 @@ def get_input_file_with_mesh(cubit):
     """Return a copy of cubit.fourc_input with mesh data (nodes and elements)
     added."""
 
-    # Create exodus file
     os.makedirs(cupy.temp_dir, exist_ok=True)
     exo_path = os.path.join(cupy.temp_dir, "cubitpy.exo")
+    print(f"[PATH LOCAL EXO] Exported mesh to {exo_path}")
+
+    if cupy.is_remote():
+        from pathlib import PureWindowsPath
+
+        if cubit.get_remote_os().lower().startswith("windows"):
+            exo_path_remote = PureWindowsPath(exo_path)
+            print(f"[PATH REMOTE EXO] Exported mesh to {exo_path_remote}")
+            cubit.create_remote_temp_dir(str(exo_path_remote.parent))
+        else:
+            raise NotImplementedError("Remote non-Windows OS not supported")
+
     cubit.export_exo(exo_path)
+    raise RuntimeError("XXXXXXX DEBUG - remove this")
+    if not os.path.isfile(exo_path):
+        raise FileNotFoundError(f"File not found: {exo_path}")
     exo = netCDF4.Dataset(exo_path)
 
     # create a deep copy of the input_file

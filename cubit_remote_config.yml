@@ -1,5 +1,5 @@
 remote:
   user: "a11bmofr"
-  host: "10.211.55.5"
+  host: "137.193.22.53"
   win_cubit_root: 'C:\Coreform_Cubit_2025_8\bin'
   win_temp_dir: 'C:\cubit_tmp_dir'

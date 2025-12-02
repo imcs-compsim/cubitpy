@@ -380,7 +380,7 @@ class CubitPy(object):
 
     def export_exo(self, path):
         """Export the mesh."""
-        self.cubit.cmd('export mesh "{}" dimension 3 overwrite'.format(path))
+        self.cubit.cmd(f'export mesh "{path}" dimension 3 overwrite')
 
     def dump(self, yaml_path, mesh_in_exo=False):
         """Create the yaml file and save it in under provided yaml_path.
@@ -399,7 +399,8 @@ class CubitPy(object):
 
         # Check if output path exists
         yaml_dir = os.path.dirname(os.path.abspath(yaml_path))
-        if not os.path.exists(yaml_dir):
+        print(f"[CubitPy.dump] Writing YAML to {yaml_path}")
+        if not os.path.exists(yaml_dir) and not cupy.is_remote():
             raise ValueError("Path {} does not exist!".format(yaml_dir))
 
         if mesh_in_exo:
@@ -712,3 +713,20 @@ class CubitPy(object):
             )
         else:
             return journal_path
+
+    def create_remote_temp_dir(self, path):
+        """Create and return remote temp directory."""
+        print(f"[Cubit.create_remote_dir] Creating remote temp directory...{path}")
+        resp = self.cubit.cubit_connect.send_and_return(
+            ["create_remote_temp_dir", path]
+        )
+        if not isinstance(resp, str):
+            raise RuntimeError(f"Remote temp-dir creation failed: {resp!r}")
+        return resp
+
+    def get_remote_os(self):
+        """Return the remote system name."""
+        resp = self.cubit.cubit_connect.send_and_return(["get_remote_os"])
+        if not isinstance(resp, str):
+            raise RuntimeError(f"Remote OS query failed: {resp!r}")
+        return resp

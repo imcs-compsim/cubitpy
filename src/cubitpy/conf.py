@@ -61,6 +61,13 @@ class CubitOptions(object):
             "/tmp/cubitpy_{}".format(getpass.getuser()),  # nosec
             "pid_{}".format(os.getpid()),
         )
+        # self.temp_dir_remote = None
+        # if self.is_remote():
+        #    base = PureWindowsPath("C:/Temp")
+        #    self.temp_dir_remote = str(
+        #    base / f"cubitpy_{getpass.getuser()}" / f"pid_{os.getpid()}"
+        # )
+
         self.temp_log = os.path.join(self.temp_dir, "cubitpy.log")
 
         # Check if temp path exits, if not create it.
@@ -94,10 +101,10 @@ class CubitOptions(object):
         """Return path to remote config if it exists, else None."""
         return get_path("CUBIT_REMOTE_CONFIG_FILE", os.path.isfile, throw_error=False)
 
-    @staticmethod
-    def get_cubit_remote_config():
+    @classmethod
+    def get_cubit_remote_config(cls):
         """Get remote cubit config from YAML file."""
-        path = cupy.get_cubit_remote_config_filepath()
+        path = cls.get_cubit_remote_config_filepath()
         if path is None:
             raise RuntimeError("CUBIT_REMOTE_CONFIG_FILE not set or file not found")
 
