@@ -29,6 +29,8 @@ import time
 import warnings
 
 import netCDF4
+
+from pathlib import PureWindowsPath
 from fourcipp.fourc_input import FourCInput
 
 from cubitpy.conf import GeometryType, cupy
@@ -381,6 +383,8 @@ class CubitPy(object):
     def export_exo(self, path):
         """Export the mesh."""
         self.cubit.cmd(f'export mesh "{path}" dimension 3 overwrite')
+        if cupy.is_remote():
+            self.transfer_file_from_remote(PureWindowsPath(path), path)
 
     def dump(self, yaml_path, mesh_in_exo=False):
         """Create the yaml file and save it in under provided yaml_path.
@@ -730,3 +734,33 @@ class CubitPy(object):
         if not isinstance(resp, str):
             raise RuntimeError(f"Remote OS query failed: {resp!r}")
         return resp
+
+    def transfer_file_from_remote(self, remote_path: PureWindowsPath, local_path: str) -> str:
+        """Copy a file from the remote machine to the local host."""
+        ssh_user, ssh_host, *_ = cupy.get_cubit_remote_config()
+
+        # Ensure the path has a drive letter (scp requires C:/… - cubit does not)
+        if not remote_path.drive:
+            remote_path = PureWindowsPath("C:", *remote_path.parts)
+
+        # is required
+        remote_for_scp = remote_path.as_posix()
+
+        cmd = ["scp", f"{ssh_user}@{ssh_host}:{remote_for_scp}", local_path]
+        print(f"[transfer] Running: {' '.join(cmd)}")
+
+        try:
+            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as e:
+            output = e.output.decode("utf-8", "replace")
+            raise RuntimeError(
+                "Failed to copy remote file:\n"
+                f"  remote: {remote_for_scp}\n"
+                f"  local : {local_path}\n"
+                f"  cmd   : {' '.join(cmd)}\n"
+                f"  error : {output}"
+            ) from e
+
+        print(f"[transfer] Copy OK: {remote_for_scp} → {local_path}")
+        return local_path
+
