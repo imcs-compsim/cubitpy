@@ -111,8 +111,6 @@ def compare_yaml(
     # File paths
     ref_file = os.path.join(testing_input, compare_name + ".4C.yaml")
     out_file = os.path.join(testing_temp, compare_name + ".4C.yaml")
-    print(f"[compare] Writing output to {out_file}")
-    print(f"[compare] Using reference file {ref_file}")
 
     if mesh_in_exo:
         # dump the input script with the mesh in exodus format
@@ -125,7 +123,6 @@ def compare_yaml(
 
     ref_input_file = FourCInput.from_4C_yaml(ref_file)
     out_input_file = FourCInput.from_4C_yaml(out_file)
-    print(f"[compare] Comparing {ref_file} to {out_file}")
 
     try:
         files_are_equal = ref_input_file.compare(

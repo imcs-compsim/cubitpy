@@ -382,7 +382,15 @@ class CubitPy(object):
 
     def export_exo(self, path):
         """Export the mesh."""
+        if cupy.is_remote():
+            if self.get_remote_os().lower().startswith("windows"):
+                exo_path_remote = PureWindowsPath(path)
+                print(f"[PATH REMOTE EXO] Exported mesh to {exo_path_remote}")
+                self.create_remote_temp_dir(str(exo_path_remote.parent))
+        else:
+            raise NotImplementedError("Remote non-Windows OS not supported")
         self.cubit.cmd(f'export mesh "{path}" dimension 3 overwrite')
+
         if cupy.is_remote():
             self.transfer_file_from_remote(PureWindowsPath(path), path)
 
