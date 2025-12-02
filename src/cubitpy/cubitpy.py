@@ -107,6 +107,8 @@ class CubitPy(object):
         kwargs:
             Arguments passed on to the creation of the python wrapper
         """
+        # Set the "real" cubit object
+        self.cubit = CubitConnect(**kwargs).cubit
 
         # Set paths
         if not cupy.is_remote():
@@ -114,8 +116,15 @@ class CubitPy(object):
                 cubit_exe = cupy.get_cubit_exe_path()
             self.cubit_exe = cubit_exe
 
-        # Set the "real" cubit object
-        self.cubit = CubitConnect(**kwargs).cubit
+        # Set remote paths
+        if cupy.is_remote():
+            if self.get_remote_os().lower().startswith("windows"):
+                self.temp_dir_remote = PureWindowsPath("C:") / PureWindowsPath(
+                    cupy.temp_dir
+                )
+                print(f"[REMOTE TEMP DIR] {self.temp_dir_remote}")
+            else:
+                raise NotImplementedError("Remote non-Windows OS not tested")
 
         # Reset cubit
         self.cubit.cmd("reset")
@@ -392,17 +401,7 @@ class CubitPy(object):
 
     def export_exo(self, path):
         """Export the mesh."""
-        if cupy.is_remote():
-            if self.get_remote_os().lower().startswith("windows"):
-                exo_path_remote = PureWindowsPath(path)
-                print(f"[PATH REMOTE EXO] Exported mesh to {exo_path_remote}")
-                self.create_remote_temp_dir(str(exo_path_remote.parent))
-            else:
-                raise NotImplementedError("Remote non-Windows OS not supported")
         self.cubit.cmd(f'export mesh "{path}" dimension 3 overwrite')
-
-        if cupy.is_remote():
-            self.transfer_file_from_remote(PureWindowsPath(path), path)
 
     def dump(self, yaml_path, mesh_in_exo=False):
         """Create the yaml file and save it in under provided yaml_path.
@@ -636,8 +635,12 @@ class CubitPy(object):
         else:
             return journal_path
 
-    def create_remote_temp_dir(self, path):
+    def create_remote_temp_dir(self, path) -> str:
         """Create and return remote temp directory."""
+        # Ensure path is a string
+        if not isinstance(path, str):
+            path = str(path)
+
         print(f"[Cubit.create_remote_dir] Creating remote temp directory...{path}")
         resp = self.cubit.cubit_connect.send_and_return(
             ["create_remote_temp_dir", path]
@@ -658,14 +661,16 @@ class CubitPy(object):
     ) -> str:
         """Copy a file from the remote machine to the local host."""
         ssh_user, ssh_host, *_ = cupy.get_cubit_remote_config()
-
+        print(f"[REMOTE PATH] from export exo {remote_path}")
         # Ensure the path has a drive letter (scp requires C:/… - cubit does not)
         if not remote_path.drive:
             remote_path = PureWindowsPath("C:", *remote_path.parts)
 
+        print(f"[REMOTE PATH] with C {remote_path}")
         # is required
         remote_for_scp = remote_path.as_posix()
 
+        print(f"[REMOTE PATH] after posix{remote_path}")
         cmd = ["scp", f"{ssh_user}@{ssh_host}:{remote_for_scp}", local_path]
         print(f"[transfer] Running: {' '.join(cmd)}")
 
@@ -686,19 +691,25 @@ class CubitPy(object):
 
     def display_in_cubit_remote(self, labels=None, delay=0.5, testing=False):
         """Display the current state in Cubit on a remote Windows machine."""
+
+        # Ensure remote temp directory exists
+        self.create_remote_temp_dir(self.temp_dir_remote)
+
         if labels is None:
             labels = []
 
         # Remote configuration and paths
-        ssh_user, ssh_host, win_cubit_root, win_temp_dir = (
-            cupy.get_cubit_remote_config()
-        )
+        ssh_user, ssh_host, win_cubit_root = cupy.get_cubit_remote_config()
+
         WIN_CUBIT_EXE = rf"{win_cubit_root}\coreform_cubit.exe"
-        STATE_CUB = rf"{win_temp_dir}\ssh_test.cub5"
-        JOURNAL = rf"{win_temp_dir}\open_state.jou"
+        STATE_CUB = rf"{self.temp_dir_remote}\ssh_test.cub5"
+        JOURNAL = rf"{self.temp_dir_remote}\open_state.jou"
         TASK_NAME = "Cubit_Show_Once"
         SSH = ["ssh", f"{ssh_user}@{ssh_host}"]
-
+        print(f"[USE] {self.temp_dir_remote}")
+        print(f"[REMOTE TEMP DIR] {self.temp_dir_remote}")
+        print(f"STATE_CUB: {STATE_CUB}")
+        print(f"JOURNAL: {JOURNAL}")
         # Basic SSH check
         run_ssh(SSH, "echo", "cmd /c echo OK")
 

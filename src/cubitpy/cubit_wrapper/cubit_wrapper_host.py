@@ -81,9 +81,7 @@ class CubitConnect(object):
             atexit.register(lambda: self.gw.exit())
             return
         else:  # cubit on remote machine via SSH
-            ssh_user, ssh_host, win_cubit_root, win_tmp_dir = (
-                cupy.get_cubit_remote_config()
-            )
+            ssh_user, ssh_host, win_cubit_root = cupy.get_cubit_remote_config()
             win_py = os.path.join(win_cubit_root, "python3", "python.exe")
 
             # make gateway

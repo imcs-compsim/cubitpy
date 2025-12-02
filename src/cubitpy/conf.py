@@ -61,12 +61,6 @@ class CubitOptions(object):
             "/tmp/cubitpy_{}".format(getpass.getuser()),  # nosec
             "pid_{}".format(os.getpid()),
         )
-        # self.temp_dir_remote = None
-        # if self.is_remote():
-        #    base = PureWindowsPath("C:/Temp")
-        #    self.temp_dir_remote = str(
-        #    base / f"cubitpy_{getpass.getuser()}" / f"pid_{os.getpid()}"
-        # )
 
         self.temp_log = os.path.join(self.temp_dir, "cubitpy.log")
 
@@ -114,13 +108,13 @@ class CubitOptions(object):
         if "remote" not in data:
             raise RuntimeError("Missing 'remote' section in YAML config")
 
-        required = ["user", "host", "win_cubit_root", "win_temp_dir"]
+        required = ["user", "host", "win_cubit_root"]
         missing = [k for k in required if k not in data["remote"]]
         if missing:
             raise RuntimeError(f"Missing keys: {', '.join(missing)}")
 
         cfg = data["remote"]
-        return cfg["user"], cfg["host"], cfg["win_cubit_root"], cfg["win_temp_dir"]
+        return cfg["user"], cfg["host"], cfg["win_cubit_root"]
 
     @classmethod
     def get_cubit_exe_path(cls, **kwargs):
