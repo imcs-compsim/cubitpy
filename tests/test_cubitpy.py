@@ -2125,4 +2125,4 @@ def test_cubit_pass_array():
 if __name__ == "__main__":
     # Manual debug / playground
     print("Manual run:")
-    print(test_create_block())
+    print(test_element_types_tet())

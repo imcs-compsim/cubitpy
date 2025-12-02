@@ -206,7 +206,6 @@ def get_input_file_with_mesh(cubit):
 
     os.makedirs(cupy.temp_dir, exist_ok=True)
     exo_path = os.path.join(cupy.temp_dir, "cubitpy.exo")
-    print(f"[PATH LOCAL EXO] Exported mesh to {exo_path}")
 
     cubit.export_exo(exo_path)
     if not os.path.isfile(exo_path):

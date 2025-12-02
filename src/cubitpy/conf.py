@@ -189,7 +189,7 @@ class CubitOptions(object):
     def is_coreform(cls):
         """Return if the given path is a path to cubit coreform."""
         cubit_root = cls.get_cubit_root_path()
-        if "15.2" in cubit_root:
+        if "15.2" in cubit_root and not cls.is_remote():
             return False
         else:
             return True
