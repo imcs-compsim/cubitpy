@@ -26,6 +26,7 @@ import getpass
 import glob
 import os
 import shutil
+import warnings
 from sys import platform
 
 import yaml
@@ -61,7 +62,6 @@ class CubitOptions(object):
             "/tmp/cubitpy_{}".format(getpass.getuser()),  # nosec
             "pid_{}".format(os.getpid()),
         )
-
         self.temp_log = os.path.join(self.temp_dir, "cubitpy.log")
 
         # Check if temp path exits, if not create it.
@@ -89,9 +89,11 @@ class CubitOptions(object):
     def get_cubit_root_path(**kwargs):
         """Get Path to cubit root directory."""
         if cupy.is_remote():
-            print(
-                "[WARNING] Cubitpy is running in remote mode. "
-                "The CUBIT_ROOT environment variable is ignored."
+            warnings.warn(
+                "Cubit is running in remote mode because CUBIT_REMOTE_CONFIG_FILE is set. "
+                "The remote Cubit installation will be used, and the local CUBIT_ROOT "
+                "setting is ignored.",
+                UserWarning,
             )
         return get_path("CUBIT_ROOT", os.path.isdir, **kwargs)
 
@@ -102,14 +104,14 @@ class CubitOptions(object):
 
     @classmethod
     def get_cubit_remote_config(cls):
-        """Get remote Cubit config from YAML file."""
+        """Load (user, host, remote_cubit_root) from YAML config."""
         TEMPLATE = (
             "\nExpected YAML format:\n"
             "----------------------------------------\n"
             "remote:\n"
             '  user: "<username>"\n'
             '  host: "<hostname_or_ip>"\n'
-            "  remote_cubit_root: <remote_cubit_root_path_in_remote_path_syntax>\n"
+            "  remote_cubit_root: <remote_path>\n"
             "----------------------------------------\n"
         )
 
@@ -118,25 +120,23 @@ class CubitOptions(object):
             raise RuntimeError(msg + TEMPLATE)
 
         path = cls.get_cubit_remote_config_filepath()
-        if path is None:
-            fail("CUBIT_REMOTE_CONFIG_FILE: file not found.")
+        if not path:
+            fail("Config file not found.")
 
         try:
-            with open(path) as f:
+            with open(path, "r") as f:
                 data = yaml.safe_load(f)
         except Exception as e:
-            fail(f"Failed to read YAML file: {e}")
+            fail(f"Failed to read YAML at '{path}': {e}")
 
-        if not isinstance(data, dict) or "remote" not in data:
-            fail("Missing 'remote' section in YAML config.")
+        remote = data.get("remote") if isinstance(data, dict) else None
+        if not remote:
+            fail("Missing 'remote' section.")
 
-        required = ["user", "host", "remote_cubit_root"]
-        missing = [k for k in required if k not in data["remote"]]
-        if missing:
-            fail(f"Missing keys: {', '.join(missing)}")
-
-        cfg = data["remote"]
-        return cfg["user"], cfg["host"], cfg["remote_cubit_root"]
+        try:
+            return remote["user"], remote["host"], remote["remote_cubit_root"]
+        except KeyError as k:
+            fail(f"Missing key: {k.args[0]}")
 
     @classmethod
     def get_cubit_exe_path(cls, **kwargs):
