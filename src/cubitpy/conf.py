@@ -26,7 +26,10 @@ import getpass
 import glob
 import os
 import shutil
+import warnings
 from sys import platform
+
+import yaml
 
 from cubitpy.cubitpy_types import (
     BoundaryConditionType,
@@ -85,7 +88,55 @@ class CubitOptions(object):
     @staticmethod
     def get_cubit_root_path(**kwargs):
         """Get Path to cubit root directory."""
+        if cupy.is_remote():
+            warnings.warn(
+                "Cubit is running in remote mode because CUBIT_REMOTE_CONFIG_FILE is set. "
+                "The remote Cubit installation will be used, and the local CUBIT_ROOT "
+                "setting is ignored.",
+                UserWarning,
+            )
         return get_path("CUBIT_ROOT", os.path.isdir, **kwargs)
+
+    @staticmethod
+    def get_cubit_remote_config_filepath():
+        """Return path to remote config if it exists, else None."""
+        return get_path("CUBIT_REMOTE_CONFIG_FILE", os.path.isfile, throw_error=False)
+
+    @classmethod
+    def get_cubit_remote_config(cls):
+        """Load (user, host, remote_cubit_root) from YAML config."""
+        TEMPLATE = (
+            "\nExpected YAML format:\n"
+            "----------------------------------------\n"
+            "remote:\n"
+            '  user: "<username>"\n'
+            '  host: "<hostname_or_ip>"\n'
+            "  remote_cubit_root: <remote_path>\n"
+            "----------------------------------------\n"
+        )
+
+        def fail(msg):
+            """Helper to raise error with template."""
+            raise RuntimeError(msg + TEMPLATE)
+
+        path = cls.get_cubit_remote_config_filepath()
+        if not path:
+            fail("Config file not found.")
+
+        try:
+            with open(path, "r") as f:
+                data = yaml.safe_load(f)
+        except Exception as e:
+            fail(f"Failed to read YAML at '{path}': {e}")
+
+        remote = data.get("remote") if isinstance(data, dict) else None
+        if not remote:
+            fail("Missing 'remote' section.")
+
+        try:
+            return remote["user"], remote["host"], remote["remote_cubit_root"]
+        except KeyError as k:
+            fail(f"Missing key: {k.args[0]}")
 
     @classmethod
     def get_cubit_exe_path(cls, **kwargs):
@@ -154,10 +205,15 @@ class CubitOptions(object):
     def is_coreform(cls):
         """Return if the given path is a path to cubit coreform."""
         cubit_root = cls.get_cubit_root_path()
-        if "15.2" in cubit_root:
+        if "15.2" in cubit_root and not cls.is_remote():
             return False
         else:
             return True
+
+    @classmethod
+    def is_remote(cls):
+        """Return True if a remote config path is defined."""
+        return cls.get_cubit_remote_config_filepath() is not None
 
 
 # Global object with options for cubitpy.

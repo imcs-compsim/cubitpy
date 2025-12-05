@@ -64,6 +64,18 @@ class CubitConnect(object):
             Python interpreter to be used for running cubit.
         """
 
+        # ------------------------------------------------------------------
+        # Remote mode – run cubit on a remote machine via SSH
+        # ------------------------------------------------------------------
+        if cupy.is_remote():
+            raise NotImplementedError("Remote cubit mode is not yet implemented.")
+
+            return
+
+        # ------------------------------------------------------------------
+        # Local mode – run cubit on the local machine
+        # ------------------------------------------------------------------
+
         if interpreter is None:
             interpreter = f"popen//python={cupy.get_cubit_interpreter()}"
 
