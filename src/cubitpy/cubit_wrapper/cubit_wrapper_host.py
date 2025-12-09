@@ -64,79 +64,73 @@ class CubitConnect(object):
             Python interpreter to be used for running cubit.
         """
 
-        # ------------------------------------------------------------------
         # Remote mode – run cubit on a remote machine via SSH
-        # ------------------------------------------------------------------
         if cupy.is_remote():
             raise NotImplementedError("Remote cubit mode is not yet implemented.")
 
-            return
-
-        # ------------------------------------------------------------------
         # Local mode – run cubit on the local machine
-        # ------------------------------------------------------------------
-
-        if interpreter is None:
-            interpreter = f"popen//python={cupy.get_cubit_interpreter()}"
-
-        if cubit_lib is None:
-            cubit_lib = cupy.get_cubit_lib_path()
-
-        # Set up the client python interpreter
-        self.gw = execnet.makegateway(interpreter)
-        self.gw.reconfigure(py3str_as_py2str=True)
-
-        # Load the main code in the client python interpreter
-        client_python_file = os.path.join(
-            os.path.dirname(__file__), "cubit_wrapper_client.py"
-        )
-        with open(client_python_file, "r") as myfile:
-            data = myfile.read()
-
-        # Set up the connection channel
-        self.channel = self.gw.remote_exec(data)
-
-        # Send parameters to the client interpreter
-        parameters = {}
-        parameters["__file__"] = __file__
-        parameters["cubit_lib_path"] = cubit_lib
-
-        # Arguments for cubit
-        if cubit_args is None:
-            arguments = [
-                "cubit",
-                # "-log",  # Write the log to a file
-                # "dev/null",
-                "-information",  # Do not output information of cubit
-                "Off",
-                "-nojournal",  # Do write a journal file
-                "-noecho",  # Do not output commands used in cubit
-            ]
         else:
-            arguments = ["cubit"] + cubit_args
+            if interpreter is None:
+                interpreter = f"popen//python={cupy.get_cubit_interpreter()}"
 
-        # Check if a log file was given in the cubit arguments
-        for arg in arguments:
-            if arg.startswith("-log="):
-                log_given = True
-                break
-        else:
-            log_given = False
+            if cubit_lib is None:
+                cubit_lib = cupy.get_cubit_lib_path()
 
-        self.log_check = False
+            # Set up the client python interpreter
+            self.gw = execnet.makegateway(interpreter)
+            self.gw.reconfigure(py3str_as_py2str=True)
 
-        if not log_given:
-            # Write the log to a temporary file and check the contents after each call to cubit
-            arguments.extend(["-log", cupy.temp_log])
-            parameters["tty"] = cupy.temp_log
-            self.log_check = True
+            # Load the main code in the client python interpreter
+            client_python_file = os.path.join(
+                os.path.dirname(__file__), "cubit_wrapper_client.py"
+            )
+            with open(client_python_file, "r") as myfile:
+                data = myfile.read()
 
-        # Send the parameters to the client interpreter
-        self.send_and_return(parameters)
+            # Set up the connection channel
+            self.channel = self.gw.remote_exec(data)
 
-        # Initialize cubit in the client and create the linking object here
-        cubit_id = self.send_and_return(["init", arguments])
-        self.cubit = CubitObjectMain(self, cubit_id)
+            # Send parameters to the client interpreter
+            parameters = {}
+            parameters["__file__"] = __file__
+            parameters["cubit_lib_path"] = cubit_lib
+
+            # Arguments for cubit
+            if cubit_args is None:
+                arguments = [
+                    "cubit",
+                    # "-log",  # Write the log to a file
+                    # "dev/null",
+                    "-information",  # Do not output information of cubit
+                    "Off",
+                    "-nojournal",  # Do write a journal file
+                    "-noecho",  # Do not output commands used in cubit
+                ]
+            else:
+                arguments = ["cubit"] + cubit_args
+
+            # Check if a log file was given in the cubit arguments
+            for arg in arguments:
+                if arg.startswith("-log="):
+                    log_given = True
+                    break
+            else:
+                log_given = False
+
+            self.log_check = False
+
+            if not log_given:
+                # Write the log to a temporary file and check the contents after each call to cubit
+                arguments.extend(["-log", cupy.temp_log])
+                parameters["tty"] = cupy.temp_log
+                self.log_check = True
+
+            # Send the parameters to the client interpreter
+            self.send_and_return(parameters)
+
+            # Initialize cubit in the client and create the linking object here
+            cubit_id = self.send_and_return(["init", arguments])
+            self.cubit = CubitObjectMain(self, cubit_id)
 
         def cleanup_execnet_gateway():
             """We need to register a function called at interpreter shutdown

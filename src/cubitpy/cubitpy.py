@@ -25,6 +25,7 @@ import os
 import subprocess  # nosec B404
 import time
 import warnings
+from pathlib import Path, PureWindowsPath
 
 import netCDF4
 from fourcipp.fourc_input import FourCInput
@@ -62,25 +63,43 @@ def _get_and_check_ids(name, container, id_list, given_id):
 class CubitPy(object):
     """A wrapper class with additional functionality for cubit."""
 
-    def __init__(self, *, cubit_exe=None, **kwargs):
+    def __init__(
+        self, *, cubit_config_path: Path | None = None, cubit_exe=None, **kwargs
+    ):
         """Initialize CubitPy.
 
         Args
         ----
+        cubit_config_path: Path
+            Path to the cubitpy configuration file.
+
         cubit_exe: str
             Path to the cubit executable
 
         kwargs:
             Arguments passed on to the creation of the python wrapper
         """
-
-        # Set paths
-        if cubit_exe is None:
-            cubit_exe = cupy.get_cubit_exe_path()
-        self.cubit_exe = cubit_exe
+        # load config
+        cupy.load_cubit_config(cubit_config_path)
 
         # Set the "real" cubit object
         self.cubit = CubitConnect(**kwargs).cubit
+
+        # Set paths
+        if not cupy.is_remote():
+            if cubit_exe is None:
+                cubit_exe = cupy.get_cubit_exe_path()
+            self.cubit_exe = cubit_exe
+
+        # Set remote paths
+        if cupy.is_remote():
+            if self.get_remote_os().lower().startswith("windows"):
+                self.temp_dir_remote = PureWindowsPath("C:") / PureWindowsPath(
+                    cupy.temp_dir
+                )
+                print(f"[REMOTE TEMP DIR] {self.temp_dir_remote}")
+            else:
+                raise NotImplementedError("Remote non-Windows OS not tested")
 
         # Reset cubit
         self.cubit.cmd("reset")

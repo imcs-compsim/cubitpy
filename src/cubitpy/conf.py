@@ -27,6 +27,7 @@ import glob
 import os
 import shutil
 import warnings
+from pathlib import Path
 from sys import platform
 
 import yaml
@@ -55,6 +56,8 @@ def get_path(environment_variable, test_function, *, throw_error=True):
 
 class CubitOptions(object):
     """Object for types in cubitpy."""
+
+    _CONFIG = None
 
     def __init__(self):
         # Temporary directory for cubitpy.
@@ -88,60 +91,121 @@ class CubitOptions(object):
     @staticmethod
     def get_cubit_root_path(**kwargs):
         """Get Path to cubit root directory."""
-        if cupy.is_remote():
-            warnings.warn(
-                "Cubit is running in remote mode because CUBIT_REMOTE_CONFIG_FILE is set. "
-                "The remote Cubit installation will be used, and the local CUBIT_ROOT "
-                "setting is ignored.",
-                UserWarning,
-            )
+        warnings.warn(
+            "Using CUBIT_ROOT for locating the local Cubit installation is deprecated. "
+            "Please define 'local_config.cubit_path' in your cubitpy configuration YAML. ",
+            DeprecationWarning,
+        )
         return get_path("CUBIT_ROOT", os.path.isdir, **kwargs)
 
     @staticmethod
-    def get_cubit_remote_config_filepath():
+    def get_cubit_config_filepath():
         """Return path to remote config if it exists, else None."""
-        return get_path("CUBIT_REMOTE_CONFIG_FILE", os.path.isfile, throw_error=False)
+        return get_path("CUBITPY_CONFIG_PATH", os.path.isfile, throw_error=False)
 
     @classmethod
-    def get_cubit_remote_config(cls):
-        """Load (user, host, remote_cubit_root) from YAML config."""
+    def validate_cubit_config(cls):
+        """Validate the already loaded config dict and raise helpful errors."""
+
+        cfg = cls._CONFIG
+        if cfg is None:
+            raise RuntimeError(
+                "Config not loaded yet. Call cupy.get_cubit_config(...) first."
+            )
+
         TEMPLATE = (
-            "\nExpected YAML format:\n"
+            "\n\nCorrect YAML structure:\n"
             "----------------------------------------\n"
-            "remote:\n"
+            'cubitpy_mode: "remote"  # or "local"\n'
+            "\n"
+            "remote_config:\n"
             '  user: "<username>"\n'
             '  host: "<hostname_or_ip>"\n'
-            "  remote_cubit_root: <remote_path>\n"
+            '  cubit_path: "<remote_cubit_install_path>"\n'
+            "\n"
+            "local_config:\n"
+            '  cubit_path: "<local_cubit_install_path>"\n'
+            "----------------------------------------\n"
+            "- If mode = 'remote': remote_config MUST exist and contain user, host, cubit_path.\n"
+            "- If mode = 'local' : local_config MUST exist and contain cubit_path.\n"
+            "- The unused section may be omitted.\n"
             "----------------------------------------\n"
         )
 
-        def fail(msg):
-            """Helper to raise error with template."""
+        def fail(msg: str):
+            """Helper to raise a RuntimeError with template."""
             raise RuntimeError(msg + TEMPLATE)
 
-        path = cls.get_cubit_remote_config_filepath()
-        if not path:
-            fail("Config file not found.")
+        # Check mode
+        if "cubitpy_mode" not in cfg:
+            fail("Missing required key: 'cubitpy_mode'.")
 
-        try:
-            with open(path, "r") as f:
-                data = yaml.safe_load(f)
-        except Exception as e:
-            fail(f"Failed to read YAML at '{path}': {e}")
+        mode = cfg["cubitpy_mode"]
+        if mode not in ("remote", "local"):
+            fail(f"Invalid cubitpy_mode '{mode}'. Expected 'remote' or 'local'.")
 
-        remote = data.get("remote") if isinstance(data, dict) else None
-        if not remote:
-            fail("Missing 'remote' section.")
+        if mode == "remote":
+            if "remote_config" not in cfg:
+                fail("cubitpy_mode='remote' requires a 'remote_config' section.")
 
-        try:
-            return remote["user"], remote["host"], remote["remote_cubit_root"]
-        except KeyError as k:
-            fail(f"Missing key: {k.args[0]}")
+            rcfg = cfg["remote_config"]
+            required = ["user", "host", "cubit_path"]
+            missing = [k for k in required if k not in rcfg or not rcfg[k]]
+            if missing:
+                fail("remote_config is missing required fields: " + ", ".join(missing))
+
+        if mode == "local":
+            if "local_config" not in cfg:
+                fail("cubitpy_mode='local' requires a 'local_config' section.")
+
+            lcfg = cfg["local_config"]
+            if "cubit_path" not in lcfg or not lcfg["cubit_path"]:
+                fail("local_config must contain a non-empty 'cubit_path'.")
+
+            local_cubit_path = lcfg["cubit_path"]
+            if not Path(local_cubit_path).expanduser().exists():
+                raise FileNotFoundError(
+                    f"local_config.cubit_path '{local_cubit_path}' does not exist."
+                )
+
+    @classmethod
+    def load_cubit_config(cls, config_path: Path | None = None):
+        """Read the CubitPy YAML config."""
+
+        if config_path is None:
+            config_path = cls.get_cubit_config_filepath()
+
+        if not config_path:
+            warnings.warn(
+                "CubitPy configuration file not found." "Using default config: local",
+                DeprecationWarning,
+            )
+            root_path = cls.get_cubit_root_path(throw_error=True)
+
+            default_cfg = {
+                "cubitpy_mode": "local",
+                "local_config": {"cubit_path": root_path},
+                "remote_config": {},
+            }
+
+            cubit_config_dict = default_cfg
+        else:
+            try:
+                with open(config_path, "r") as f:
+                    cubit_config_dict = yaml.safe_load(f)
+            except Exception as e:
+                raise ImportError(f"Failed to read YAML at '{config_path}': {e}")
+
+            if not isinstance(cubit_config_dict, dict):
+                raise ImportError("YAML top level must be a mapping (dict).")
+
+        cls._CONFIG = cubit_config_dict
+        cls.validate_cubit_config()
 
     @classmethod
     def get_cubit_exe_path(cls, **kwargs):
         """Get Path to cubit executable."""
-        cubit_root = cls.get_cubit_root_path(**kwargs)
+        cubit_root = cls._CONFIG["local_config"]["cubit_path"]
         if platform == "linux" or platform == "linux2":
             if cupy.is_coreform():
                 return os.path.join(cubit_root, "bin", "coreform_cubit")
@@ -159,7 +223,7 @@ class CubitOptions(object):
     @classmethod
     def get_cubit_lib_path(cls, **kwargs):
         """Get Path to cubit lib directory."""
-        cubit_root = cls.get_cubit_root_path(**kwargs)
+        cubit_root = cls._CONFIG["local_config"]["cubit_path"]
         if platform == "linux" or platform == "linux2":
             return os.path.join(cubit_root, "bin")
         elif platform == "darwin":
@@ -173,7 +237,7 @@ class CubitOptions(object):
     @classmethod
     def get_cubit_interpreter(cls):
         """Get the path to the python interpreter to be used for CubitPy."""
-        cubit_root = cls.get_cubit_root_path()
+        cubit_root = cls._CONFIG["local_config"]["cubit_path"]
         if cls.is_coreform():
             pattern = "**/python3"
             full_pattern = os.path.join(cubit_root, pattern)
@@ -204,16 +268,21 @@ class CubitOptions(object):
     @classmethod
     def is_coreform(cls):
         """Return if the given path is a path to cubit coreform."""
-        cubit_root = cls.get_cubit_root_path()
+        cubit_root = cls._CONFIG["local_config"]["cubit_path"]
         if "15.2" in cubit_root and not cls.is_remote():
             return False
         else:
             return True
 
     @classmethod
-    def is_remote(cls):
-        """Return True if a remote config path is defined."""
-        return cls.get_cubit_remote_config_filepath() is not None
+    def is_remote(cls) -> bool:
+        """Return True if cubit is running remotely based on the loaded
+        config."""
+        if cls._CONFIG is None:
+            raise RuntimeError(
+                "Config not loaded yet. Call load_cubit_config() first use of is_remote."
+            )
+        return cls._CONFIG.get("cubitpy_mode") == "remote"
 
 
 # Global object with options for cubitpy.
