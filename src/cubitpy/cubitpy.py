@@ -63,9 +63,7 @@ def _get_and_check_ids(name, container, id_list, given_id):
 class CubitPy(object):
     """A wrapper class with additional functionality for cubit."""
 
-    def __init__(
-        self, *, cubit_config_path: Path | None = None, cubit_exe=None, **kwargs
-    ):
+    def __init__(self, *, cubit_config_path: Path | None = None, **kwargs):
         """Initialize CubitPy.
 
         Args
@@ -87,9 +85,7 @@ class CubitPy(object):
 
         # Set paths
         if not cupy.is_remote():
-            if cubit_exe is None:
-                cubit_exe = cupy.get_cubit_exe_path()
-            self.cubit_exe = cubit_exe
+            self.cubit_exe = cupy.get_cubit_exe_path()
 
         # Set remote paths
         if cupy.is_remote():

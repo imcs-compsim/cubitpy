@@ -89,16 +89,6 @@ class CubitOptions(object):
         self.eps_pos = 1e-10
 
     @staticmethod
-    def get_cubit_root_path(**kwargs):
-        """Get Path to cubit root directory."""
-        warnings.warn(
-            "Using CUBIT_ROOT for locating the local Cubit installation is deprecated. "
-            "Please define 'local_config.cubit_path' in your cubitpy configuration YAML. ",
-            DeprecationWarning,
-        )
-        return get_path("CUBIT_ROOT", os.path.isdir, **kwargs)
-
-    @staticmethod
     def get_cubit_config_filepath():
         """Return path to remote config if it exists, else None."""
         return get_path("CUBITPY_CONFIG_PATH", os.path.isfile, throw_error=False)
@@ -182,7 +172,7 @@ class CubitOptions(object):
                 "CubitPy configuration file not found." "Using default config: local",
                 DeprecationWarning,
             )
-            root_path = cls.get_cubit_root_path(throw_error=True)
+            root_path = get_path("CUBIT_ROOT", os.path.isdir, throw_error=True)
 
             default_config = {
                 "cubitpy_mode": "local",
