@@ -247,9 +247,82 @@ while 1:
         # Return to python host
         channel.send(None)
 
+    elif receive[0] == "create_remote_temp_dir":
+        if len(receive) < 2:
+            raise ValueError("create_remote_temp_dir expects a path argument")
+
+        tmp_path = receive[1]
+
+        try:
+            os.makedirs(tmp_path, exist_ok=True)
+        except Exception as e:
+            raise RuntimeError(
+                "Failed to create remote temp directory '%s': %s" % (tmp_path, e)
+            )
+
+        channel.send(tmp_path)
+
+    elif receive[0] == "get_remote_os":
+        import platform
+
+        channel.send(platform.system())
+
+    elif receive[0] == "write_open_state_journal":
+        # receive = ["write_open_state_journal", state_cub, journal_path, active_labels]
+        import io
+        import os
+        import traceback
+
+        state_cub = receive[1]
+        journal_path = receive[2]
+        active_labels = receive[3]
+
+        all_labels = [
+            "volume",
+            "surface",
+            "curve",
+            "vertex",
+            "hex",
+            "tet",
+            "face",
+            "tri",
+            "edge",
+            "node",
+        ]
+
+        debug = {
+            "state_cub": state_cub,
+            "journal_path": journal_path,
+            "active_labels": list(active_labels),
+            "journal_dir_exists_before": os.path.isdir(
+                os.path.dirname(journal_path) or "."
+            ),
+        }
+
+        try:
+            journal_dir = os.path.dirname(journal_path)
+            if journal_dir and not os.path.isdir(journal_dir):
+                os.makedirs(journal_dir, exist_ok=True)
+
+            with io.open(journal_path, "w", encoding="utf-8") as f:
+                f.write('open "%s"\n' % state_cub)
+                for item in all_labels:
+                    on_off = "On" if item in active_labels else "Off"
+                    f.write("label %s %s\n" % (item, on_off))
+                f.write("display\n")
+
+            debug["journal_written"] = True
+            debug["journal_exists_after"] = os.path.exists(journal_path)
+            debug["journal_size"] = (
+                os.path.getsize(journal_path) if os.path.exists(journal_path) else 0
+            )
+            channel.send({"status": "ok", "debug": debug})
+        except Exception as e:
+            debug["exception"] = str(e)
+            debug["traceback"] = traceback.format_exc()
+            channel.send({"status": "error", "debug": debug})
     else:
         raise ValueError('The case of "{}" is not implemented!'.format(receive[0]))
-
 
 # Send EOF
 channel.send("EOF")

@@ -2120,3 +2120,9 @@ def test_cubit_pass_array():
     for point, result in point_and_result:
         is_inside = block.point_containment(point)
         assert is_inside == result
+
+
+if __name__ == "__main__":
+    # Manual debug / playground
+    print("Manual run:")
+    print(test_create_block())
