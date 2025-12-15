@@ -25,7 +25,7 @@ import os
 import subprocess  # nosec B404
 import time
 import warnings
-from pathlib import Path, PureWindowsPath
+from pathlib import Path
 
 import netCDF4
 from fourcipp.fourc_input import FourCInput
@@ -71,9 +71,6 @@ class CubitPy(object):
         cubit_config_path: Path
             Path to the cubitpy configuration file.
 
-        cubit_exe: str
-            Path to the cubit executable
-
         kwargs:
             Arguments passed on to the creation of the python wrapper
         """
@@ -83,19 +80,13 @@ class CubitPy(object):
         # Set the "real" cubit object
         self.cubit = CubitConnect(**kwargs).cubit
 
-        # Set paths
-        if not cupy.is_remote():
-            self.cubit_exe = cupy.get_cubit_exe_path()
-
         # Set remote paths
         if cupy.is_remote():
-            if self.get_remote_os().lower().startswith("windows"):
-                self.temp_dir_remote = PureWindowsPath("C:") / PureWindowsPath(
-                    cupy.temp_dir
-                )
-                print(f"[REMOTE TEMP DIR] {self.temp_dir_remote}")
-            else:
-                raise NotImplementedError("Remote non-Windows OS not tested")
+            raise NotImplementedError(
+                "Remote cubit connections are not yet supported in CubitPy."
+            )
+        else:
+            self.cubit_exe = cupy.get_cubit_exe_path()
 
         # Reset cubit
         self.cubit.cmd("reset")
