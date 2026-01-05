@@ -25,13 +25,13 @@ A few things to keep in mind:
 
 ## Installation
 
-CubitPy is developed with `python3.12`.
+CubitPy is developed with `python3.13`.
 Other versions of Python might lead to issues.
 It is recommended to use a python environment container such as `conda` or `venv`.
 - `conda`:
   A [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html) environment can be created and loaded with
   ```bash
-  conda create -n cubitpy python=3.12
+  conda create -n cubitpy python=3.13
   conda activate cubitpy
   ```
 - `venv`: Chose an appropriate directory for this, e.g., `/home/user/opt`.
