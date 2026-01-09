@@ -24,6 +24,9 @@ interpreter and the main python interpreter."""
 
 import atexit
 import os
+import sys
+import traceback
+from pathlib import Path
 
 import execnet
 import numpy as np
@@ -66,8 +69,72 @@ class CubitConnect(object):
 
         # Remote mode – run cubit on a remote machine via SSH
         if cupy.is_remote():
-            raise NotImplementedError("Remote cubit mode is not yet implemented.")
+            ssh_user, ssh_host, remote_cubit_root = cupy.get_cubit_remote_config()
+            win_py = os.path.join(remote_cubit_root, "python3", "python.exe")
 
+            # make gateway
+            self.gw = execnet.makegateway(f"ssh={ssh_user}@{ssh_host}//python={win_py}")
+            self.gw.reconfigure(py3str_as_py2str=True)
+
+            # load client & utility code to send over
+            client_path = Path(__file__).with_name("cubit_wrapper_client.py")
+            util_path = Path(__file__).with_name("cubit_wrapper_utility.py")
+            client_code = client_path.read_text(encoding="utf-8")
+            util_code = util_path.read_text(encoding="utf-8")
+
+            # remote prologue: DLL path + sys.path + preload utility, then exec client
+            prologue = r"""
+                        import sys, os, types
+                        bin_dir, py_dir, site_pkgs, client_code, util_code, logical_client_path = channel.receive()
+                        try:
+                            if hasattr(os, "add_dll_directory"):
+                                os.add_dll_directory(bin_dir)
+                            else:
+                                os.environ["PATH"] = bin_dir + os.pathsep + os.environ.get("PATH","")
+                        except Exception:
+                            pass
+                        for p in (bin_dir, py_dir, site_pkgs):
+                            if p and p not in sys.path:
+                                sys.path.insert(0, p)
+                        util_mod = types.ModuleType("cubit_wrapper_utility")
+                        exec(util_code, util_mod.__dict__)
+                        sys.modules["cubit_wrapper_utility"] = util_mod
+                        exec(compile(client_code, logical_client_path, "exec"))
+                        """
+
+            # send prologue args
+            self.channel = self.gw.remote_exec(prologue)
+            py_dir = os.path.join(remote_cubit_root, "python3")
+            site_pkgs = os.path.join(py_dir, "Lib", "site-packages")
+            self.channel.send(
+                (
+                    remote_cubit_root,
+                    py_dir,
+                    site_pkgs,
+                    client_code,
+                    util_code,
+                    str(client_path),
+                )
+            )
+
+            # handshake with the client
+            parameters = {
+                "__file__": str(client_path),
+                "cubit_lib_path": remote_cubit_root,
+            }
+            if cubit_args is None:
+                arguments = ["cubit", "-information", "Off", "-nojournal", "-noecho"]
+            else:
+                arguments = ["cubit"] + cubit_args
+
+            # SSH mode: do NOT attach local log or read it (paths differ across OSes)
+            self.log_check = False
+            # arguments += ["-log", r"C:\Users\%USERNAME%\AppData\Local\Temp\cubitpy_win_log.txt"]
+
+            self.send_and_return(parameters)  # expect None ack internally
+            cubit_id = self.send_and_return(["init", arguments])
+            self.cubit = CubitObjectMain(self, cubit_id)
+            atexit.register(lambda: self.gw.exit())
         # Local mode – run cubit on the local machine
         else:
             if interpreter is None:
@@ -156,7 +223,19 @@ class CubitConnect(object):
         try:
             self.channel.send(argument_list)
             return self.channel.receive()
-        except:
+        except Exception as e:
+            # Ignore expected shutdown errors when the channel is already closed
+            if "cannot send to" in str(e) or "closed" in str(e):
+                return None
+
+            # Otherwise print debugging info
+            print(
+                "[CubitConnect.send_and_return] Remote call failed.\n"
+                "  payload : {!r}\n"
+                "  error   : {!r}".format(argument_list, e),
+                file=sys.stderr,
+            )
+            traceback.print_exc(file=sys.stderr)
             return None
 
     def get_attribute(self, cubit_object, name):
