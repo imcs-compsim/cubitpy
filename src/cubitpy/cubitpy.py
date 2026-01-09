@@ -21,11 +21,13 @@
 # THE SOFTWARE.
 """Implements a class that helps create meshes with cubit."""
 
+import datetime
 import os
+import shlex
 import subprocess  # nosec B404
 import time
 import warnings
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 import netCDF4
 from fourcipp.fourc_input import FourCInput
@@ -38,6 +40,37 @@ from cubitpy.cubit_to_fourc_input import (
     get_input_file_with_mesh,
 )
 from cubitpy.cubit_wrapper.cubit_wrapper_host import CubitConnect
+
+
+def convert_to_remote_path(self, path: str) -> PureWindowsPath:
+    """Convert a local path to a remote path."""
+    if self.get_remote_os().lower().startswith("windows"):
+        path_remote = PureWindowsPath(path)
+        print(f"[PATH CONVERTED TO] {path_remote}")
+        self.create_remote_temp_dir(str(path_remote.parent))
+        return path_remote
+    else:
+        raise NotImplementedError("Remote non-Windows OS not supported")
+
+
+def run_ssh(ssh_base, label, cmd, timeout=25, tolerate_fail=False):
+    """Run an SSH command and print the output."""
+    print(f"\n[{label}]")
+    print("$", " ".join(shlex.quote(x) for x in (ssh_base + [cmd])))
+    res = subprocess.run(
+        ssh_base + [cmd], capture_output=True, text=False, timeout=timeout
+    )  # nosec B603
+    out = res.stdout.decode("utf-8", "replace").rstrip()
+    err = res.stderr.decode("utf-8", "replace").rstrip()
+    if out:
+        print(out)
+    if err:
+        print(err)
+    ok = (res.returncode == 0) or tolerate_fail
+    print(f"-> exit: {res.returncode} ({'ok' if ok else 'fail'})")
+    if not ok:
+        raise RuntimeError(f"SSH command failed: {cmd}")
+    return ok
 
 
 def _get_and_check_ids(name, container, id_list, given_id):
@@ -74,19 +107,29 @@ class CubitPy(object):
         kwargs:
             Arguments passed on to the creation of the python wrapper
         """
+        # FixMe: cubit_exe
+        cubit_exe = None
         # load config
         cupy.load_cubit_config(cubit_config_path)
 
         # Set the "real" cubit object
         self.cubit = CubitConnect(**kwargs).cubit
 
+        # Set paths
+        if not cupy.is_remote():
+            if cubit_exe is None:
+                cubit_exe = cupy.get_cubit_exe_path()
+            self.cubit_exe = cubit_exe
+
         # Set remote paths
         if cupy.is_remote():
-            raise NotImplementedError(
-                "Remote cubit connections are not yet supported in CubitPy."
-            )
-        else:
-            self.cubit_exe = cupy.get_cubit_exe_path()
+            if self.get_remote_os().lower().startswith("windows"):
+                self.temp_dir_remote = PureWindowsPath("C:") / PureWindowsPath(
+                    cupy.temp_dir
+                )
+                print(f"[REMOTE TEMP DIR] {self.temp_dir_remote}")
+            else:
+                raise NotImplementedError("Remote non-Windows OS not tested")
 
         # Reset cubit
         self.cubit.cmd("reset")
@@ -382,7 +425,8 @@ class CubitPy(object):
 
         # Check if output path exists
         yaml_dir = os.path.dirname(os.path.abspath(yaml_path))
-        if not os.path.exists(yaml_dir):
+        print(f"[CubitPy.dump] Writing YAML to {yaml_path}")
+        if not os.path.exists(yaml_dir) and not cupy.is_remote():
             raise ValueError("Path {} does not exist!".format(yaml_dir))
 
         if mesh_in_exo:
@@ -529,6 +573,10 @@ class CubitPy(object):
             journal and command will re returned.
         """
 
+        if cupy.is_remote():
+            self.display_in_cubit_remote(labels, delay, testing)
+            return
+
         # Export the cubit state. After the export, we wait, to ensure that the
         # write operation finished, and the state file can be opened cleanly
         # (in some cases the creation of the state file takes to long and in
@@ -591,3 +639,136 @@ class CubitPy(object):
             )
         else:
             return journal_path
+
+    def create_remote_temp_dir(self, path) -> str:
+        """Create and return remote temp directory."""
+        # Ensure path is a string
+        if not isinstance(path, str):
+            path = str(path)
+
+        print(f"[Cubit.create_remote_dir] Creating remote temp directory...{path}")
+        resp = self.cubit.cubit_connect.send_and_return(
+            ["create_remote_temp_dir", path]
+        )
+        if not isinstance(resp, str):
+            raise RuntimeError(f"Remote temp-dir creation failed: {resp!r}")
+        return resp
+
+    def get_remote_os(self):
+        """Return the remote system name."""
+        resp = self.cubit.cubit_connect.send_and_return(["get_remote_os"])
+        if not isinstance(resp, str):
+            raise RuntimeError(f"Remote OS query failed: {resp!r}")
+        return resp
+
+    def transfer_file_from_remote(
+        self, remote_path: PureWindowsPath, local_path: str
+    ) -> str:
+        """Copy a file from the remote machine to the local host."""
+        ssh_user = cupy.get_remote_user()
+        ssh_host = cupy.get_remote_host()
+        print(f"[REMOTE PATH] from export exo {remote_path}")
+        # Ensure the path has a drive letter (scp requires C:/… - cubit does not)
+        if not remote_path.drive:
+            remote_path = PureWindowsPath("C:", *remote_path.parts)
+
+        print(f"[REMOTE PATH] with C {remote_path}")
+        # is required
+        remote_for_scp = remote_path.as_posix()
+
+        print(f"[REMOTE PATH] after posix{remote_path}")
+        cmd = ["scp", f"{ssh_user}@{ssh_host}:{remote_for_scp}", local_path]
+        print(f"[transfer] Running: {' '.join(cmd)}")
+
+        try:
+            subprocess.check_output(cmd, stderr=subprocess.STDOUT)  # nosec B603
+        except subprocess.CalledProcessError as e:
+            output = e.output.decode("utf-8", "replace")
+            raise RuntimeError(
+                "Failed to copy remote file:\n"
+                f"  remote: {remote_for_scp}\n"
+                f"  local : {local_path}\n"
+                f"  cmd   : {' '.join(cmd)}\n"
+                f"  error : {output}"
+            ) from e
+
+        print(f"[transfer] Copy OK: {remote_for_scp} → {local_path}")
+        return local_path
+
+    def display_in_cubit_remote(self, labels=None, delay=0.5, testing=False):
+        """Display the current state in Cubit on a remote Windows machine."""
+
+        # Ensure remote temp directory exists
+        self.create_remote_temp_dir(self.temp_dir_remote)
+
+        if labels is None:
+            labels = []
+
+        # Remote configuration and paths
+        ssh_user, ssh_host, win_cubit_root = cupy.get_cubit_remote_config()
+
+        WIN_CUBIT_EXE = rf"{win_cubit_root}\coreform_cubit.exe"
+        STATE_CUB = rf"{self.temp_dir_remote}\ssh_test.cub5"
+        JOURNAL = rf"{self.temp_dir_remote}\open_state.jou"
+        TASK_NAME = "Cubit_Show_Once"
+        SSH = ["ssh", f"{ssh_user}@{ssh_host}"]
+        print(f"[USE] {self.temp_dir_remote}")
+        print(f"[REMOTE TEMP DIR] {self.temp_dir_remote}")
+        print(f"STATE_CUB: {STATE_CUB}")
+        print(f"JOURNAL: {JOURNAL}")
+        # Basic SSH check
+        run_ssh(SSH, "echo", "cmd /c echo OK")
+
+        # Export state to Windows filesystem
+        self.export_cub(STATE_CUB)
+        time.sleep(delay)
+
+        # Resolve active label names
+        cubit_names = [label.get_cubit_string() for label in labels]
+
+        # Create journal file on the Windows side
+        resp = self.cubit.cubit_connect.send_and_return(
+            ["write_open_state_journal", STATE_CUB, JOURNAL, cubit_names]
+        )
+        if not isinstance(resp, dict) or resp.get("status") != "ok":
+            raise RuntimeError(f"Failed to write journal on remote client: {resp!r}")
+
+        if testing:
+            return {
+                "state_cub": STATE_CUB,
+                "journal": JOURNAL,
+                "exe": WIN_CUBIT_EXE,
+                "task": TASK_NAME,
+                "journal_resp": resp,
+            }
+
+        # Remove any old scheduled task
+        run_ssh(
+            SSH,
+            "delete old task",
+            rf"schtasks /Delete /TN {TASK_NAME} /F",
+            tolerate_fail=True,
+        )
+
+        # Create a scheduled task that launches Cubit in the interactive session
+        st = (datetime.datetime.now() + datetime.timedelta(minutes=1)).strftime("%H:%M")
+        create = (
+            rf"schtasks /Create /TN {TASK_NAME} /SC ONCE /ST {st} /TR "
+            rf'"\"{WIN_CUBIT_EXE}\" -nojournal -information Off -input \"{JOURNAL}\"" '
+            rf"/RL HIGHEST /IT /RU {ssh_user} /F"
+        )
+        run_ssh(SSH, "create task", create)
+
+        # Run the task immediately
+        run_ssh(
+            SSH,
+            "run task",
+            rf"schtasks /Run /TN {TASK_NAME}",
+            tolerate_fail=True,
+        )
+
+        print("Remote Cubit startup requested:")
+        print(f"  DB : {STATE_CUB}")
+        print(f"  JOU: {JOURNAL}")
+        print(f"  EXE: {WIN_CUBIT_EXE}")
+        print(f"  Task: {TASK_NAME}")

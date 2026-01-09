@@ -276,6 +276,24 @@ class CubitOptions(object):
             )
         return cls._config.get("cubitpy_mode") == "remote"
 
+    @classmethod
+    def get_remote_user(cls):
+        """Return the remote user."""
+        if cls._config is None:
+            raise RuntimeError(
+                "Config not loaded yet. Call load_cubit_config() first use of is_remote."
+            )
+        return cls._config["remote_config"]["user"]
+
+    @classmethod
+    def get_remote_host(cls):
+        """Return the remote user."""
+        if cls._config is None:
+            raise RuntimeError(
+                "Config not loaded yet. Call load_cubit_config() first use of is_remote."
+            )
+        return cls._config["remote_config"]["host"]
+
 
 # Global object with options for cubitpy.
 cupy = CubitOptions()
