@@ -329,50 +329,6 @@ class CubitObject(object):
         """Return a list of all non callable cubit methods for this object."""
         return [method for method, callable in self.get_self_dir() if not callable]
 
-    def get_geometry_type(self):
-        """Return the type of this item."""
-
-        if self.isinstance("cubitpy_vertex"):
-            return cupy.geometry.vertex
-        elif self.isinstance("cubitpy_curve"):
-            return cupy.geometry.curve
-        elif self.isinstance("cubitpy_surface"):
-            return cupy.geometry.surface
-        elif self.isinstance("cubitpy_volume"):
-            return cupy.geometry.volume
-
-        # Default value -> not a valid geometry
-        raise TypeError("The item is not a valid geometry!")
-
-    def get_node_ids(self):
-        """Return a list with the node IDs (index 1) of this object.
-
-        This is done by creating a temporary node set that this geometry
-        is added to. It is not possible to get the node list directly
-        from cubit.
-        """
-
-        # Get a node set ID that is not yet taken
-        node_set_ids = [0]
-        node_set_ids.extend(self.cubit_connect.cubit.get_nodeset_id_list())
-        temp_node_set_id = max(node_set_ids) + 1
-
-        # Add a temporary node set with this geometry
-        self.cubit_connect.cubit.cmd(
-            "nodeset {} {} {}".format(
-                temp_node_set_id, self.get_geometry_type().get_cubit_string(), self.id()
-            )
-        )
-
-        # Get the nodes in the created node set
-        node_ids = self.cubit_connect.cubit.get_nodeset_nodes_inclusive(
-            temp_node_set_id
-        )
-
-        # Delete the temp node set and return the node list
-        self.cubit_connect.cubit.cmd("delete nodeset {}".format(temp_node_set_id))
-        return node_ids
-
 
 class CubitObjectMain(CubitObject):
     """The main cubit object will be of this type, it can not delete itself."""

@@ -38,6 +38,7 @@ from cubitpy.cubit_to_fourc_input import (
     get_input_file_with_mesh,
 )
 from cubitpy.cubit_wrapper.cubit_wrapper_host import CubitConnect
+from cubitpy.utils import get_geometry_type
 
 
 def _get_and_check_ids(name, container, id_list, given_id):
@@ -196,7 +197,7 @@ class CubitPy(object):
         )
 
         # Get element type of item.
-        geometry_type = item.get_geometry_type()
+        geometry_type = get_geometry_type(item)
 
         self.cubit.cmd("create block {}".format(block_id))
 
@@ -283,7 +284,7 @@ class CubitPy(object):
 
         # Get element type of item if it was not explicitly given.
         if geometry_type is None:
-            geometry_type = item.get_geometry_type()
+            geometry_type = get_geometry_type(item)
 
         self.cubit.cmd("create nodeset {}".format(node_set_id))
         if not isinstance(item, CubitGroup):
@@ -350,7 +351,7 @@ class CubitPy(object):
         """
 
         # Check if item is line.
-        if not item.get_geometry_type() == cupy.geometry.curve:
+        if not get_geometry_type(item) == cupy.geometry.curve:
             raise TypeError("Expected line, got {}".format(type(item)))
         self.cubit.cmd("curve {} interval {} scheme equal".format(item.id(), n_el))
 

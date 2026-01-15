@@ -23,6 +23,7 @@
 
 from cubitpy.conf import cupy
 from cubitpy.cubit_wrapper.cubit_wrapper_host import CubitObject
+from cubitpy.utils import get_geometry_type
 
 
 class CubitGroup(object):
@@ -125,7 +126,7 @@ class CubitGroup(object):
             self.cubit.add_entity_to_group(
                 self._id,
                 add_value.id(),
-                add_value.get_geometry_type().get_cubit_string(),
+                get_geometry_type(add_value).get_cubit_string(),
             )
         elif isinstance(add_value, list):
             for item in add_value:
