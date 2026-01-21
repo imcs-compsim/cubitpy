@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 #
-# Copyright (c) 2018-2025 CubitPy Authors
+# Copyright (c) 2018-2026 CubitPy Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -77,7 +77,7 @@ def cubit_step_by_step_tutorial_cli(
     # Now you must create the cylinder which will be used to cut the hole
     # from the brick. This is accomplished with the CLI.
     # (Alternatively we could also use the cubit python command `cubit.cylinder`)
-    cubit.cmd(f"create cylinder height {brick_size*1.2} radius {hole_radius}")
+    cubit.cmd(f"create cylinder height {brick_size * 1.2} radius {hole_radius}")
 
     # Executing a command via the CLI does not return the geometry object. To get the
     # cylinder object we can write
@@ -143,7 +143,7 @@ def cubit_step_by_step_tutorial_cli(
 
         if np.abs(radius - hole_radius) < 1e-10:
             # The curve lies on the cylinder radius, now set the meshing interval
-            cubit.cmd(f"curve {curve.id()} interval size {size/2}")
+            cubit.cmd(f"curve {curve.id()} interval size {size / 2}")
 
     # Now we can mesh the surface
     cubit.cmd(f"mesh surface {mesh_surface.id()}")

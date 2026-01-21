@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 #
-# Copyright (c) 2018-2025 CubitPy Authors
+# Copyright (c) 2018-2026 CubitPy Authors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -169,7 +169,7 @@ class CubitOptions(object):
 
         if not config_path:
             warnings.warn(
-                "CubitPy configuration file not found." "Using default config: local",
+                "CubitPy configuration file not found.Using default config: local",
                 DeprecationWarning,
             )
             root_path = get_path("CUBIT_ROOT", os.path.isdir, throw_error=True)
