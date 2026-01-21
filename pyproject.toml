@@ -16,7 +16,7 @@ dependencies = [
   "numpy",
   "fourcipp"
 ]
-version = "0.1.0"
+version = "0.1.1"
 
 [project.urls]
 Repository = "https://github.com/imcs-compsim/cubitpy/"
