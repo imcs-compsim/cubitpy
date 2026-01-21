@@ -69,7 +69,10 @@ class CubitConnect(object):
 
         # Remote mode – run cubit on a remote machine via SSH
         if cupy.is_remote():
-            ssh_user, ssh_host, remote_cubit_root = cupy.get_cubit_remote_config()
+            ssh_user = cupy.get_remote_user()
+            ssh_host = cupy.get_remote_host()
+            remote_cubit_root = cupy.get_remote_cubit_path()
+
             win_py = os.path.join(remote_cubit_root, "python3", "python.exe")
 
             # make gateway

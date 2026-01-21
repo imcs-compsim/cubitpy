@@ -705,7 +705,9 @@ class CubitPy(object):
             labels = []
 
         # Remote configuration and paths
-        ssh_user, ssh_host, win_cubit_root = cupy.get_cubit_remote_config()
+        ssh_user = cupy.get_remote_user()
+        ssh_host = cupy.get_remote_host()
+        win_cubit_root = cupy.get_remote_cubit_patht()
 
         WIN_CUBIT_EXE = rf"{win_cubit_root}\coreform_cubit.exe"
         STATE_CUB = rf"{self.temp_dir_remote}\ssh_test.cub5"

@@ -29,6 +29,7 @@ import shutil
 import warnings
 from pathlib import Path
 from sys import platform
+from typing import Any, Dict
 
 import yaml
 
@@ -57,7 +58,7 @@ def get_path(environment_variable, test_function, *, throw_error=True):
 class CubitOptions(object):
     """Object for types in cubitpy."""
 
-    _config = None
+    _config: Dict[str, Any] | None = None
 
     def __init__(self):
         # Temporary directory for cubitpy.
@@ -195,6 +196,13 @@ class CubitOptions(object):
         cls.validate_cubit_config()
 
     @classmethod
+    def get_config(cls) -> dict:
+        """Return loaded config or raise if not loaded."""
+        if cls._config is None:
+            raise RuntimeError("Config not loaded yet. Call load_cubit_config() first.")
+        return cls._config
+
+    @classmethod
     def get_cubit_exe_path(cls, **kwargs):
         """Get Path to cubit executable."""
         cubit_root = cls._config["local_config"]["cubit_path"]
@@ -268,31 +276,33 @@ class CubitOptions(object):
 
     @classmethod
     def is_remote(cls) -> bool:
-        """Return True if cubit is running remotely based on the loaded
-        config."""
-        if cls._config is None:
+        """Return the cubpitpy_mode."""
+        return cls.get_config().get("cubitpy_mode") == "remote"
+
+    @classmethod
+    def _require_remote(cls):
+        """Return the remote_config section of the config file."""
+        config = cls.get_config()
+        if config.get("cubitpy_mode") != "remote":
             raise RuntimeError(
-                "Config not loaded yet. Call load_cubit_config() first use of is_remote."
+                "Remote config required but cubitpy_mode is not 'remote'."
             )
-        return cls._config.get("cubitpy_mode") == "remote"
+        return config["remote_config"]
 
     @classmethod
     def get_remote_user(cls):
-        """Return the remote user."""
-        if cls._config is None:
-            raise RuntimeError(
-                "Config not loaded yet. Call load_cubit_config() first use of is_remote."
-            )
-        return cls._config["remote_config"]["user"]
+        """Return the remote user from config."""
+        return cls._require_remote()["user"]
 
     @classmethod
     def get_remote_host(cls):
-        """Return the remote user."""
-        if cls._config is None:
-            raise RuntimeError(
-                "Config not loaded yet. Call load_cubit_config() first use of is_remote."
-            )
-        return cls._config["remote_config"]["host"]
+        """Return the remote host from config."""
+        return cls._require_remote()["host"]
+
+    @classmethod
+    def get_remote_cubit_path(cls):
+        """Return the remote cubit path from config."""
+        return cls._require_remote()["cubit_path"]
 
 
 # Global object with options for cubitpy.
