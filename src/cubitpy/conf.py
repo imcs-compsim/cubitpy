@@ -223,6 +223,8 @@ class CubitOptions(object):
     @classmethod
     def get_cubit_lib_path(cls, **kwargs):
         """Get Path to cubit lib directory."""
+        if cls.is_remote():
+            return cls.get_remote_cubit_path()
         cubit_root = cls._config["local_config"]["cubit_path"]
         if platform == "linux" or platform == "linux2":
             return os.path.join(cubit_root, "bin")
@@ -237,33 +239,39 @@ class CubitOptions(object):
     @classmethod
     def get_cubit_interpreter(cls):
         """Get the path to the python interpreter to be used for CubitPy."""
-        cubit_root = cls._config["local_config"]["cubit_path"]
-        if cls.is_coreform():
-            pattern = "**/python3"
-            full_pattern = os.path.join(cubit_root, pattern)
-            python3_matches = glob.glob(full_pattern, recursive=True)
-            python3_files = [path for path in python3_matches if os.path.isfile(path)]
-            if not len(python3_files) == 1:
-                raise ValueError(
-                    "Could not find the path to the cubit python interpreter"
-                )
-            cubit_python_interpreter = python3_files[0]
-            return cubit_python_interpreter
+        if cls.is_remote():
+            remote_cubit_root = cupy.get_remote_cubit_path()
+            return os.path.join(remote_cubit_root, "python3", "python.exe")
         else:
-            python2_path_env = get_path(
-                "CUBITPY_PYTHON2", os.path.isfile, throw_error=False
-            )
-            if python2_path_env is not None:
-                return python2_path_env
+            cubit_root = cls._config["local_config"]["cubit_path"]
+            if cls.is_coreform():
+                pattern = "**/python3"
+                full_pattern = os.path.join(cubit_root, pattern)
+                python3_matches = glob.glob(full_pattern, recursive=True)
+                python3_files = [
+                    path for path in python3_matches if os.path.isfile(path)
+                ]
+                if not len(python3_files) == 1:
+                    raise ValueError(
+                        "Could not find the path to the cubit python interpreter"
+                    )
+                cubit_python_interpreter = python3_files[0]
+                return cubit_python_interpreter
+            else:
+                python2_path_env = get_path(
+                    "CUBITPY_PYTHON2", os.path.isfile, throw_error=False
+                )
+                if python2_path_env is not None:
+                    return python2_path_env
 
-            if shutil.which("python2.7") is not None:
-                return "python2.7"
+                if shutil.which("python2.7") is not None:
+                    return "python2.7"
 
-            raise ValueError(
-                "Could not find a python2 interpreter. "
-                "You can specify this by setting the environment variable "
-                "CUBITPY_PYTHON2 to the path of your python2 interpreter."
-            )
+                raise ValueError(
+                    "Could not find a python2 interpreter. "
+                    "You can specify this by setting the environment variable "
+                    "CUBITPY_PYTHON2 to the path of your python2 interpreter."
+                )
 
     @classmethod
     def is_coreform(cls):
@@ -303,6 +311,29 @@ class CubitOptions(object):
     def get_remote_cubit_path(cls):
         """Return the remote cubit path from config."""
         return cls._require_remote()["cubit_path"]
+
+    @classmethod
+    def get_remote_python_prologue(cls):
+        """remote python prologue: DLL path + sys.path + preload utility, then exec client"""
+        prologue = r"""
+                    import sys, os, types
+                    bin_dir, py_dir, site_pkgs, client_code, util_code, logical_client_path = channel.receive()
+                    try:
+                        if hasattr(os, "add_dll_directory"):
+                            os.add_dll_directory(bin_dir)
+                        else:
+                            os.environ["PATH"] = bin_dir + os.pathsep + os.environ.get("PATH","")
+                    except Exception:
+                        pass
+                    for p in (bin_dir, py_dir, site_pkgs):
+                        if p and p not in sys.path:
+                            sys.path.insert(0, p)
+                    util_mod = types.ModuleType("cubit_wrapper_utility")
+                    exec(util_code, util_mod.__dict__)
+                    sys.modules["cubit_wrapper_utility"] = util_mod
+                    exec(compile(client_code, logical_client_path, "exec"))
+                    """
+        return prologue
 
 
 # Global object with options for cubitpy.
