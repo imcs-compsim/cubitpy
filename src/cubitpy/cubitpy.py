@@ -107,8 +107,6 @@ class CubitPy(object):
         kwargs:
             Arguments passed on to the creation of the python wrapper
         """
-        # FixMe: cubit_exe
-        cubit_exe = None
         # load config
         cupy.load_cubit_config(cubit_config_path)
 
@@ -116,20 +114,20 @@ class CubitPy(object):
         self.cubit = CubitConnect(**kwargs).cubit
 
         # Set paths
-        if not cupy.is_remote():
-            if cubit_exe is None:
-                cubit_exe = cupy.get_cubit_exe_path()
-            self.cubit_exe = cubit_exe
-
-        # Set remote paths
         if cupy.is_remote():
-            if self.get_remote_os().lower().startswith("windows"):
+            if (
+                self.get_remote_os().lower().startswith("windows")
+            ):  # This can not be moved to cupy
                 self.temp_dir_remote = PureWindowsPath("C:") / PureWindowsPath(
                     cupy.temp_dir
                 )
-                print(f"[REMOTE TEMP DIR] {self.temp_dir_remote}")
+                print(f"[Remote temp. dir] {self.temp_dir_remote}")
             else:
                 raise NotImplementedError("Remote non-Windows OS not tested")
+
+        else:
+            cubit_exe = cupy.get_cubit_exe_path()
+            self.cubit_exe = cubit_exe
 
         # Reset cubit
         self.cubit.cmd("reset")
@@ -404,9 +402,21 @@ class CubitPy(object):
         else:
             self.cubit.cmd('save as "{}" overwrite'.format(path))
 
-    def export_exo(self, path):
+    def export_exo(self, exo_path_local):
         """Export the mesh."""
-        self.cubit.cmd('export mesh "{}" dimension 3 overwrite'.format(path))
+
+        if cupy.is_remote():
+            exo_path_remote = self.temp_dir_remote / "cubitpy.exo"
+            self.create_remote_temp_dir(exo_path_remote.parent)
+            export_path = exo_path_remote
+        else:
+            export_path = exo_path_local
+
+        # write to disk
+        self.cmd('export mesh "{}" dimension 3 overwrite'.format(export_path))
+
+        if cupy.is_remote():
+            self.transfer_file_from_remote(exo_path_remote, exo_path_local)
 
     def dump(self, yaml_path, mesh_in_exo=False):
         """Create the yaml file and save it in under provided yaml_path.

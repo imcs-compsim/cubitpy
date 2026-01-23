@@ -206,21 +206,13 @@ def get_input_file_with_mesh(cubit):
 
     # Create exodus file
     os.makedirs(cupy.temp_dir, exist_ok=True)
-    exo_path = os.path.join(cupy.temp_dir, "cubitpy.exo")
+    exo_path_local = os.path.join(cupy.temp_dir, "cubitpy.exo")
 
-    if cupy.is_remote():
-        exo_path_remote = cubit.temp_dir_remote / "cubitpy.exo"
-        cubit.create_remote_temp_dir(exo_path_remote.parent)
+    cubit.export_exo(exo_path_local)
 
-    cubit.export_exo(exo_path)
-
-    if cupy.is_remote():
-        cubit.transfer_file_from_remote(exo_path_remote, exo_path)
-
-    if not os.path.isfile(exo_path):
-        raise FileNotFoundError(f"File not found: {exo_path}")
-    exo = netCDF4.Dataset(exo_path)
-
+    if not os.path.isfile(exo_path_local):
+        raise FileNotFoundError(f"File not found: {exo_path_local}")
+    exo = netCDF4.Dataset(exo_path_local)
     # create a deep copy of the input_file
     input_file = cubit.fourc_input.copy()
     # Add the node sets
