@@ -682,11 +682,10 @@ class CubitPy(object):
         if not remote_path.drive:
             remote_path = PureWindowsPath("C:", *remote_path.parts)
 
-        print(f"[REMOTE PATH] with C {remote_path}")
         # is required
         remote_for_scp = remote_path.as_posix()
 
-        print(f"[REMOTE PATH] after posix{remote_path}")
+        print(f"[REMOTE PATH] {remote_path}")
         cmd = ["scp", f"{ssh_user}@{ssh_host}:{remote_for_scp}", local_path]
         print(f"[transfer] Running: {' '.join(cmd)}")
 
@@ -705,7 +704,7 @@ class CubitPy(object):
         print(f"[transfer] Copy OK: {remote_for_scp} → {local_path}")
         return local_path
 
-    def display_in_cubit_remote(self, labels=None, delay=0.5, testing=False):
+    def display_in_cubit_remote(self, labels=None, delay=1.0, testing=False):
         """Display the current state in Cubit on a remote Windows machine."""
 
         # Ensure remote temp directory exists
@@ -717,28 +716,38 @@ class CubitPy(object):
         # Remote configuration and paths
         ssh_user = cupy.get_remote_user()
         ssh_host = cupy.get_remote_host()
-        win_cubit_root = cupy.get_remote_cubit_patht()
+        win_cubit_root = cupy.get_remote_cubit_path()
 
         WIN_CUBIT_EXE = rf"{win_cubit_root}\coreform_cubit.exe"
         STATE_CUB = rf"{self.temp_dir_remote}\ssh_test.cub5"
         JOURNAL = rf"{self.temp_dir_remote}\open_state.jou"
         TASK_NAME = "Cubit_Show_Once"
         SSH = ["ssh", f"{ssh_user}@{ssh_host}"]
-        print(f"[USE] {self.temp_dir_remote}")
-        print(f"[REMOTE TEMP DIR] {self.temp_dir_remote}")
-        print(f"STATE_CUB: {STATE_CUB}")
-        print(f"JOURNAL: {JOURNAL}")
+
+        print("[CubitRemote] Preparing remote Cubit display")
+        print(f"[RemoteTempDir] {self.temp_dir_remote}")
+        print(f"[StateFile]     {STATE_CUB}")
+        print(f"[JournalFile]   {JOURNAL}")
+        print(f"[CubitExe]      {WIN_CUBIT_EXE}")
+
         # Basic SSH check
-        run_ssh(SSH, "echo", "cmd /c echo OK")
+        print("[SSH] Verifying remote connectivity")
+        run_ssh(SSH, "ssh-check", "cmd /c echo OK")
 
         # Export state to Windows filesystem
+        print("[CubitExport] Writing Cubit state to remote filesystem")
         self.export_cub(STATE_CUB)
         time.sleep(delay)
 
         # Resolve active label names
         cubit_names = [label.get_cubit_string() for label in labels]
+        if cubit_names:
+            print(f"[Labels] Enabled: {', '.join(cubit_names)}")
+        else:
+            print("[Labels] Enabled: none")
 
         # Create journal file on the Windows side
+        print("[Journal] Creating open-state journal on remote machine")
         resp = self.cubit.cubit_connect.send_and_return(
             ["write_open_state_journal", STATE_CUB, JOURNAL, cubit_names]
         )
@@ -746,6 +755,7 @@ class CubitPy(object):
             raise RuntimeError(f"Failed to write journal on remote client: {resp!r}")
 
         if testing:
+            print("[Testing] Remote Cubit launch skipped")
             return {
                 "state_cub": STATE_CUB,
                 "journal": JOURNAL,
@@ -755,32 +765,35 @@ class CubitPy(object):
             }
 
         # Remove any old scheduled task
+        print(f"[Task] Removing existing scheduled task: {TASK_NAME}")
         run_ssh(
             SSH,
-            "delete old task",
+            "delete-task",
             rf"schtasks /Delete /TN {TASK_NAME} /F",
             tolerate_fail=True,
         )
 
         # Create a scheduled task that launches Cubit in the interactive session
         st = (datetime.datetime.now() + datetime.timedelta(minutes=1)).strftime("%H:%M")
+        print(f"[Task] Creating scheduled task (start time: {st})")
         create = (
             rf"schtasks /Create /TN {TASK_NAME} /SC ONCE /ST {st} /TR "
             rf'"\"{WIN_CUBIT_EXE}\" -nojournal -information Off -input \"{JOURNAL}\"" '
             rf"/RL HIGHEST /IT /RU {ssh_user} /F"
         )
-        run_ssh(SSH, "create task", create)
+        run_ssh(SSH, "create-task", create)
 
         # Run the task immediately
+        print(f"[Task] Triggering scheduled task: {TASK_NAME}")
         run_ssh(
             SSH,
-            "run task",
+            "run-task",
             rf"schtasks /Run /TN {TASK_NAME}",
             tolerate_fail=True,
         )
 
-        print("Remote Cubit startup requested:")
-        print(f"  DB : {STATE_CUB}")
-        print(f"  JOU: {JOURNAL}")
-        print(f"  EXE: {WIN_CUBIT_EXE}")
-        print(f"  Task: {TASK_NAME}")
+        print("[CubitRemote] Cubit startup requested successfully")
+        print(f"[CubitRemote] State   : {STATE_CUB}")
+        print(f"[CubitRemote] Journal : {JOURNAL}")
+        print(f"[CubitRemote] Executable: {WIN_CUBIT_EXE}")
+        print(f"[CubitRemote] Task    : {TASK_NAME}")
