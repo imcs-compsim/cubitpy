@@ -41,6 +41,7 @@ cubit_vertex = "cubitpy_vertex"
 cubit_curve = "cubitpy_curve"
 cubit_surface = "cubitpy_surface"
 cubit_volume = "cubitpy_volume"
+cubit_body = "cubitpy_body"
 
 
 # Default parameters
@@ -213,6 +214,8 @@ while 1:
             channel.send(isinstance(compare_object, cubit.Surface))
         elif receive[2] == cubit_volume:
             channel.send(isinstance(compare_object, cubit.Volume))
+        elif receive[2] == cubit_body:
+            channel.send(isinstance(compare_object, cubit.Body))
         else:
             raise ValueError(
                 "Wrong compare type given! Expected vertex, curve, surface or volume, got{}".format(
