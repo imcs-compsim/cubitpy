@@ -270,7 +270,6 @@ while 1:
     elif receive[0] == "write_open_state_journal":
         # receive = ["write_open_state_journal", state_cub, journal_path, active_labels]
         import io
-        import os
         import traceback
 
         state_cub = receive[1]

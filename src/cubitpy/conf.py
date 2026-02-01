@@ -250,7 +250,7 @@ class CubitOptions(object):
     def get_cubit_interpreter(cls):
         """Get the path to the python interpreter to be used for CubitPy."""
         if cls.is_remote():
-            remote_cubit_root = cupy.get_remote_cubit_path()
+            remote_cubit_root = cls.get_remote_cubit_path()
             return os.path.join(remote_cubit_root, "python3", "python.exe")
         else:
             cubit_root = cls._config["local_config"]["cubit_path"]
@@ -294,7 +294,7 @@ class CubitOptions(object):
 
     @classmethod
     def is_remote(cls) -> bool:
-        """Return the cubpitpy_mode."""
+        """Return True if cubitpy is running in remote mode."""
         return cls.get_config().get("cubitpy_mode") == "remote"
 
     @classmethod

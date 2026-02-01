@@ -42,17 +42,6 @@ from cubitpy.cubit_to_fourc_input import (
 from cubitpy.cubit_wrapper.cubit_wrapper_host import CubitConnect
 
 
-def convert_to_remote_path(self, path: str) -> PureWindowsPath:
-    """Convert a local path to a remote path."""
-    if self.get_remote_os().lower().startswith("windows"):
-        path_remote = PureWindowsPath(path)
-        print(f"[PATH CONVERTED TO] {path_remote}")
-        self.create_remote_temp_dir(str(path_remote.parent))
-        return path_remote
-    else:
-        raise NotImplementedError("Remote non-Windows OS not supported")
-
-
 def run_ssh(ssh_base, label, cmd, timeout=25, tolerate_fail=False):
     """Run an SSH command and print the output."""
     print(f"\n[SSH:{label}]")
@@ -135,8 +124,7 @@ class CubitPy(object):
                 raise NotImplementedError("Remote non-Windows OS not tested")
 
         else:
-            cubit_exe = cupy.get_cubit_exe_path()
-            self.cubit_exe = cubit_exe
+            self.cubit_exe = cupy.get_cubit_exe_path()
 
         # Reset cubit
         self.cubit.cmd("reset")
@@ -593,6 +581,7 @@ class CubitPy(object):
         """
 
         if cupy.is_remote():
+            delay += 0.5
             self.display_in_cubit_remote(labels, delay, testing)
             return
 
@@ -696,7 +685,7 @@ class CubitPy(object):
             remote_path = PureWindowsPath("C:", *remote_path.parts)
             print(f"[transfer] Drive letter added: {remote_path}")
 
-        # Required for scp
+        # Convert the Windows-style path to a POSIX-style string for use with scp
         remote_for_scp = remote_path.as_posix()
 
         print(f"[transfer] SCP path         : {remote_for_scp}")

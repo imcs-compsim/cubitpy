@@ -100,7 +100,7 @@ class CubitConnect(object):
         else:
             arguments = ["cubit"] + cubit_args
 
-        # Create the a gateway to the remote machine
+        # In remote mode, configure the remote Python environment and send the client code
         if cupy.is_remote():
             util_path = Path(__file__).with_name("cubit_wrapper_utility.py")
             util_code = util_path.read_text(encoding="utf-8")
