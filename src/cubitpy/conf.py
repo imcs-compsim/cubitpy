@@ -333,8 +333,8 @@ class CubitOptions(object):
                             os.add_dll_directory(bin_dir)
                         else:
                             os.environ["PATH"] = bin_dir + os.pathsep + os.environ.get("PATH","")
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        print("Warning: failed to configure DLL directory or PATH:", exc, file=sys.stderr)
                     for p in (bin_dir, py_dir, site_pkgs):
                         if p and p not in sys.path:
                             sys.path.insert(0, p)
