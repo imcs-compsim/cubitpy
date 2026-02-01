@@ -55,21 +55,32 @@ def convert_to_remote_path(self, path: str) -> PureWindowsPath:
 
 def run_ssh(ssh_base, label, cmd, timeout=25, tolerate_fail=False):
     """Run an SSH command and print the output."""
-    print(f"\n[{label}]")
+    print(f"\n[SSH:{label}]")
     print("$", " ".join(shlex.quote(x) for x in (ssh_base + [cmd])))
+
     res = subprocess.run(
-        ssh_base + [cmd], capture_output=True, text=False, timeout=timeout
+        ssh_base + [cmd],
+        capture_output=True,
+        text=True,
+        timeout=timeout,
     )  # nosec B603
-    out = res.stdout.decode("utf-8", "replace").rstrip()
-    err = res.stderr.decode("utf-8", "replace").rstrip()
+
+    out = res.stdout.rstrip()
+    err = res.stderr.rstrip()
+
     if out:
+        print("[STDOUT]")
         print(out)
     if err:
+        print("[STDERR]")
         print(err)
+
     ok = (res.returncode == 0) or tolerate_fail
-    print(f"-> exit: {res.returncode} ({'ok' if ok else 'fail'})")
+    print(f"[SSH] exit={res.returncode} status={'ok' if ok else 'fail'}")
+
     if not ok:
         raise RuntimeError(f"SSH command failed: {cmd}")
+
     return ok
 
 
@@ -118,9 +129,7 @@ class CubitPy(object):
             if (
                 self.get_remote_os().lower().startswith("windows")
             ):  # This can not be moved to cupy
-                self.temp_dir_remote = PureWindowsPath("C:") / PureWindowsPath(
-                    cupy.temp_dir
-                )
+                self.temp_dir_remote = PureWindowsPath("C:/", cupy.temp_dir)
                 print(f"[Remote temp. dir] {self.temp_dir_remote}")
             else:
                 raise NotImplementedError("Remote non-Windows OS not tested")
