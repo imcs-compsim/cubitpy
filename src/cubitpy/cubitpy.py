@@ -671,38 +671,46 @@ class CubitPy(object):
             raise RuntimeError(f"Remote OS query failed: {resp!r}")
         return resp
 
-    def transfer_file_from_remote(
-        self, remote_path: PureWindowsPath, local_path: str
-    ) -> str:
-        """Copy a file from the remote machine to the local host."""
-        ssh_user = cupy.get_remote_user()
-        ssh_host = cupy.get_remote_host()
-        print(f"[REMOTE PATH] from export exo {remote_path}")
-        # Ensure the path has a drive letter (scp requires C:/… - cubit does not)
-        if not remote_path.drive:
-            remote_path = PureWindowsPath("C:", *remote_path.parts)
 
-        # is required
-        remote_for_scp = remote_path.as_posix()
+def transfer_file_from_remote(
+    self, remote_path: PureWindowsPath, local_path: str
+) -> str:
+    """Copy a file from the remote machine to the local host."""
+    ssh_user = cupy.get_remote_user()
+    ssh_host = cupy.get_remote_host()
 
-        print(f"[REMOTE PATH] {remote_path}")
-        cmd = ["scp", f"{ssh_user}@{ssh_host}:{remote_for_scp}", local_path]
-        print(f"[transfer] Running: {' '.join(cmd)}")
+    print("\n[transfer] Starting remote file transfer")
+    print(f"[transfer] Remote user/host : {ssh_user}@{ssh_host}")
+    print(f"[transfer] Original path    : {remote_path}")
 
-        try:
-            subprocess.check_output(cmd, stderr=subprocess.STDOUT)  # nosec B603
-        except subprocess.CalledProcessError as e:
-            output = e.output.decode("utf-8", "replace")
-            raise RuntimeError(
-                "Failed to copy remote file:\n"
-                f"  remote: {remote_for_scp}\n"
-                f"  local : {local_path}\n"
-                f"  cmd   : {' '.join(cmd)}\n"
-                f"  error : {output}"
-            ) from e
+    # Ensure the path has a drive letter (scp requires C:/… - cubit does not)
+    if not remote_path.drive:
+        remote_path = PureWindowsPath("C:", *remote_path.parts)
+        print(f"[transfer] Drive letter added: {remote_path}")
 
-        print(f"[transfer] Copy OK: {remote_for_scp} → {local_path}")
-        return local_path
+    # Required for scp
+    remote_for_scp = remote_path.as_posix()
+
+    print(f"[transfer] SCP path         : {remote_for_scp}")
+    print(f"[transfer] Local target     : {local_path}")
+
+    cmd = ["scp", f"{ssh_user}@{ssh_host}:{remote_for_scp}", local_path]
+    print(f"[transfer] Command          : {' '.join(cmd)}")
+
+    try:
+        subprocess.check_output(cmd, stderr=subprocess.STDOUT)  # nosec B603
+    except subprocess.CalledProcessError as e:
+        output = e.output.decode("utf-8", "replace")
+        raise RuntimeError(
+            "[transfer] FAILED\n"
+            f"  remote : {remote_for_scp}\n"
+            f"  local  : {local_path}\n"
+            f"  cmd    : {' '.join(cmd)}\n"
+            f"  error  : {output}"
+        ) from e
+
+    print(f"[transfer] SUCCESS → {remote_for_scp} → {local_path}\n")
+    return local_path
 
     def display_in_cubit_remote(self, labels=None, delay=1.0, testing=False):
         """Display the current state in Cubit on a remote Windows machine."""

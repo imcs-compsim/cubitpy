@@ -147,6 +147,16 @@ class CubitOptions(object):
             if missing:
                 fail("remote_config is missing required fields: " + ", ".join(missing))
 
+            user = remote_config["user"]
+            host = remote_config["host"]
+            if not isinstance(user, str) or not isinstance(host, str):
+                fail("remote_config 'user' and 'host' must be strings.")
+            if any(c.isspace() or c in "@:/\\" for c in user + host):
+                fail(
+                    "remote_config 'user' and 'host' must not contain whitespace "
+                    "or any of '@ : / \\'."
+                )
+
         if mode == "local":
             if "local_config" not in config:
                 fail("cubitpy_mode='local' requires a 'local_config' section.")
