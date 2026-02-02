@@ -22,6 +22,7 @@
 """Implements functions that create geometries in cubit."""
 
 from cubitpy.conf import cupy
+from cubitpy.cubit_utility import formatter as formatter
 
 
 def create_spline_interpolation_curve(cubit, vertices, *, delete_points=True):
@@ -39,10 +40,9 @@ def create_spline_interpolation_curve(cubit, vertices, *, delete_points=True):
 
     # Create the vertices
     vertices = [cubit.create_vertex(*vertex) for vertex in vertices]
-    vertices_ids = [str(vertex.id()) for vertex in vertices]
     cubit.cmd(
-        "create curve spline vertex {} {}".format(
-            " ".join(vertices_ids), ("delete" if delete_points else "")
+        "create curve spline {} {}".format(
+            formatter(vertices), ("delete" if delete_points else "")
         )
     )
     return cubit.curve(cubit.get_last_id(cupy.geometry.curve))
@@ -158,17 +158,15 @@ def create_parametric_surface(
             )
 
     # Create the surface.
-    curve_u_ids = " ".join([str(curve.id()) for curve in curves[0]])
-    curve_v_ids = " ".join([str(curve.id()) for curve in curves[1]])
     cubit.cmd(
-        "create surface net U curve {} V curve {} noheal".format(
-            curve_u_ids, curve_v_ids
+        "create surface net U {} V {} noheal".format(
+            formatter(curves[0]), formatter(curves[1])
         )
     )
 
     if delete_curves:
-        for id_string in [curve_u_ids, curve_v_ids]:
-            cubit.cmd("delete curve {}".format(id_string))
+        for index in range(2):
+            cubit.cmd("delete {}".format(formatter(curves[index])))
 
     return cubit.surface(cubit.get_last_id(cupy.geometry.surface))
 
@@ -184,8 +182,7 @@ def create_surface_by_vertices(cubit, vertices):
         A list of cubit vertices that make up the surface. Be aware that
         the ordering matters.
     """
-    vertex_str = " ".join([str(vertex.id()) for vertex in vertices])
-    cubit.cmd(f"create surface vertex {vertex_str}")
+    cubit.cmd(f"create surface {formatter(vertices)}")
     last_id = cubit.get_last_id("surface")
     return cubit.surface(last_id)
 
@@ -218,7 +215,6 @@ def create_brick_by_corner_points(cubit, corner_points):
         create_surface_by_vertices(cubit, [vertices[id] for id in ids])
         for ids in surface_vertex_ids
     ]
-    surface_str = " ".join([str(surface.id()) for surface in surfaces])
-    cubit.cmd(f"create volume surface {surface_str} heal")
+    cubit.cmd(f"create volume {formatter(surfaces)} heal")
     last_id = cubit.get_last_id("volume")
     return cubit.volume(last_id)

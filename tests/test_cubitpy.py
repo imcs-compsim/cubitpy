@@ -38,7 +38,7 @@ testing_external_geometry = os.path.join(testing_path, "external-geometry")
 
 # CubitPy imports.
 from cubitpy.conf import cupy
-from cubitpy.cubit_utility import get_surface_center, import_fluent_geometry
+from cubitpy.cubit_utility import formatter, get_surface_center, import_fluent_geometry
 from cubitpy.cubitpy import CubitPy
 from cubitpy.geometry_creation_functions import (
     create_brick_by_corner_points,
@@ -352,8 +352,8 @@ def test_element_types_tet():
 
     for i, element_type in enumerate(element_type_list):
         cubit.cmd("create pyramid height 1 sides 3 radius 1.2 top 0")
-        cubit.cmd("move Volume {} x {}".format(i + 1, i))
         volume = cubit.volume(1 + i)
+        cubit.cmd("move {} x {}".format(formatter(volume), i))
         cubit.add_element_type(
             volume,
             element_type,
@@ -361,7 +361,7 @@ def test_element_types_tet():
             material={"MAT": 1},
             bc_description=None,
         )
-        cubit.cmd("Volume {} size 2".format(volume.id()))
+        cubit.cmd("{} size 2".format(formatter(volume)))
         volume.mesh()
 
         cubit.add_node_set(
@@ -454,7 +454,7 @@ def test_element_types_hex():
         )
 
         # Move the volume.
-        cubit.cmd("move Volume {} x 0 y 0 z {}".format(1 + offset_volume, i * 0.4))
+        cubit.cmd("move volume {} x 0 y 0 z {}".format(1 + offset_volume, i * 0.4))
 
         # Set the element type.
         cubit.add_element_type(
@@ -2171,3 +2171,91 @@ def test_cubit_hash_items():
     assert object_dict[cubit.body(brick.id())] == "body"
     assert object_dict[brick.surfaces()[0]] == "surface_1"
     assert object_dict[brick.volumes()[0]] == "volume_1"
+
+
+def test_object_formatter():
+    """Check the object formatter."""
+
+    cubit = CubitPy()
+
+    brick_1 = cubit.brick(1, 2, 3)
+    brick_2 = cubit.brick(1, 2, 3)
+
+    vertex_1 = cubit.create_vertex(0, 0, 0)
+    vertex_2 = cubit.create_vertex(1, 0, 0)
+    vertex_3 = cubit.create_vertex(1, 1, 0)
+    vertex_4 = cubit.create_vertex(0, 1, 0)
+
+    # Careful here, vertices will be deleted when curves are combined to a surface,
+    # thus we recreate temporary ones here, that will not be checked later.
+    vertex_1_tmp = cubit.create_vertex(0, 0, 0)
+    vertex_2_tmp = cubit.create_vertex(1, 0, 0)
+    vertex_3_tmp = cubit.create_vertex(1, 1, 0)
+    vertex_4_tmp = cubit.create_vertex(0, 1, 0)
+    curve_1 = cubit.create_curve(vertex_1_tmp, vertex_2_tmp)
+    curve_2 = cubit.create_curve(vertex_2_tmp, vertex_3_tmp)
+    curve_3 = cubit.create_curve(vertex_3_tmp, vertex_4_tmp)
+    curve_4 = cubit.create_curve(vertex_4_tmp, vertex_1_tmp)
+
+    surface_1 = cubit.create_surface([curve_1, curve_2, curve_3, curve_4])
+    surface_2 = cubit.cmd_return(
+        "create surface circle radius 2 zplane", cupy.geometry.surface
+    )
+
+    brick_3 = cubit.cmd_return("brick x 1 y 2 z 3", cupy.geometry.volume)
+    brick_4 = cubit.cmd_return("brick x 1 y 2 z 3", cupy.geometry.volume)
+
+    surface_group_1 = cubit.group(add_value="add surface with x_coord > 0.01")
+
+    assert "volume 1 2 5 6" == formatter(brick_1, brick_2, brick_3, brick_4)
+    assert "volume 1 5" == formatter(brick_1, 5)
+
+    assert "surface 13 13" == formatter(surface_1, surface_1)
+    assert "surface 13 14" == formatter(
+        surface_1, surface_2, geometry_type=cupy.geometry.surface
+    )
+    assert "surface 13 14" == formatter([surface_1, surface_2])
+    assert "surface 13 14" == formatter((surface_1, surface_2))
+
+    assert "curve 26 27 26 25" == formatter(curve_2, curve_3, curve_2, curve_1)
+
+    assert "vertex 18 19 20 17" == formatter(vertex_2, vertex_3, vertex_4, vertex_1)
+
+    assert "surface 6 12 13 20 26" == formatter(surface_group_1)
+    assert "surface 14" == formatter(surface_2)
+    assert "surface 6 12 13 20 26 14" == formatter(surface_group_1, surface_2)
+
+    assert "surface 1 3 2 4" == formatter(
+        1, 3, 2, 4, geometry_type=cupy.geometry.surface
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="No geometry types were found in the arguments, either check the "
+        "arguments or explicitly provide a `geometry_type`.",
+    ):
+        formatter(1, 2, 3)
+
+    with pytest.raises(
+        ValueError, match="All arguments must have the same geometry type, got"
+    ):
+        formatter(surface_1, vertex_1)
+
+    with pytest.raises(
+        ValueError, match="All arguments must have the same geometry type, got"
+    ):
+        formatter([surface_1, surface_2], geometry_type=cupy.geometry.volume)
+
+    with pytest.raises(ValueError, match="No item ids were found in the arguments."):
+        formatter(geometry_type=cupy.geometry.volume)
+
+    with pytest.raises(
+        ValueError,
+        match="The argument at position 0 is iterable, this only works if there is a single argument, got 2 arguments.",
+    ):
+        formatter([surface_1], surface_2)
+
+    with pytest.raises(
+        TypeError, match="Expected CubitObject, CubitGroup or int, but got "
+    ):
+        formatter(surface_1, 0.5)
