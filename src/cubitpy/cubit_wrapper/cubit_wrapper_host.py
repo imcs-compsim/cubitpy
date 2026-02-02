@@ -28,7 +28,7 @@ import os
 import execnet
 import numpy as np
 
-from cubitpy.conf import cupy
+from cubitpy.conf import GeometryType, cupy
 from cubitpy.cubit_wrapper.cubit_wrapper_utility import cubit_item_to_id, is_base_type
 
 
@@ -291,6 +291,23 @@ class CubitObject(object):
         except AttributeError:
             return self.cubit_connect.get_attribute(self, name)
 
+    def __eq__(self, other):
+        """Compare two cubit objects based on their type and IDs."""
+        if not isinstance(other, CubitObject):
+            return False
+        if self.get_object_type() == other.get_object_type():
+            if self.id() == other.id():
+                return True
+        return False
+
+    def __hash__(self):
+        """Return a hash based on the same properties used for equality.
+
+        This allows CubitObject instances to be used in sets and as
+        dictionary keys while remaining consistent with __eq__.
+        """
+        return hash((self.get_object_type(), self.id()))
+
     def __del__(self):
         """When this object is deleted, the object in the client can also be
         deleted."""
@@ -299,20 +316,6 @@ class CubitObject(object):
     def __str__(self):
         """Return the string from the client."""
         return '<CubitObject>"' + self.cubit_id[1] + '"'
-
-    def isinstance(self, geom_type):
-        """Check if this object is of geom_type.
-
-        Args
-        ----
-        geom_type: str
-            Name of the geometry to compare (vertex, curve, surface, volume).
-        """
-
-        # Compare in client python interpreter.
-        return self.cubit_connect.send_and_return(
-            ["isinstance", self.cubit_id, geom_type]
-        )
 
     def get_self_dir(self):
         """Return a list of all cubit child items of this object.
@@ -329,20 +332,36 @@ class CubitObject(object):
         """Return a list of all non callable cubit methods for this object."""
         return [method for method, callable in self.get_self_dir() if not callable]
 
-    def get_geometry_type(self):
+    def get_object_type(self):
+        """Return the type of this object."""
+        string_representation = self.cubit_connect.send_and_return(
+            ["get_object_type", self.cubit_id]
+        )
+        if string_representation is None:
+            raise TypeError("Could not get object type for {}".format(self.cubit_id))
+        mapping = {
+            "cubitpy_vertex": cupy.geometry.vertex,
+            "cubitpy_curve": cupy.geometry.curve,
+            "cubitpy_surface": cupy.geometry.surface,
+            "cubitpy_volume": cupy.geometry.volume,
+            "cubitpy_body": "body",
+        }
+        if string_representation not in mapping:
+            raise TypeError(
+                "Unknown object type {} for {}".format(
+                    string_representation, self.cubit_id
+                )
+            )
+        return mapping[string_representation]
+
+    def get_geometry_type(self) -> GeometryType:
         """Return the type of this item."""
 
-        if self.isinstance("cubitpy_vertex"):
-            return cupy.geometry.vertex
-        elif self.isinstance("cubitpy_curve"):
-            return cupy.geometry.curve
-        elif self.isinstance("cubitpy_surface"):
-            return cupy.geometry.surface
-        elif self.isinstance("cubitpy_volume"):
-            return cupy.geometry.volume
-
-        # Default value -> not a valid geometry
-        raise TypeError("The item is not a valid geometry!")
+        object_type = self.get_object_type()
+        if object_type == "body":
+            raise TypeError("The item is a body, not a pure geometry!")
+        else:
+            return object_type
 
     def get_node_ids(self):
         """Return a list with the node IDs (index 1) of this object.

@@ -21,6 +21,8 @@
 # THE SOFTWARE.
 """Utility functions for the cubit wrapper."""
 
+CUBIT_OBJECT_PREFIX = "cubitpy_object_"
+
 
 def object_to_id(obj):
     """Return list representing the cubit object.
@@ -28,7 +30,7 @@ def object_to_id(obj):
     The first entry is the python id of the object, the second entry is
     the string representation.
     """
-    return ["cubitpy_id_" + str(id(obj)), str(obj)]
+    return [CUBIT_OBJECT_PREFIX + str(id(obj)), str(obj)]
 
 
 def cubit_item_to_id(cubit_data_list):
@@ -39,9 +41,8 @@ def cubit_item_to_id(cubit_data_list):
         return None
     if not isinstance(cubit_data_list[0], str):
         return None
-    start_string = "cubitpy_id_"
-    if cubit_data_list[0].startswith(start_string):
-        return int(cubit_data_list[0][len(start_string) :])
+    if cubit_data_list[0].startswith(CUBIT_OBJECT_PREFIX):
+        return int(cubit_data_list[0][len(CUBIT_OBJECT_PREFIX) :])
     else:
         return None
 

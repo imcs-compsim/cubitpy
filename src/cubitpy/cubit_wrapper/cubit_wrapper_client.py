@@ -41,6 +41,7 @@ cubit_vertex = "cubitpy_vertex"
 cubit_curve = "cubitpy_curve"
 cubit_surface = "cubitpy_surface"
 cubit_volume = "cubitpy_volume"
+cubit_body = "cubitpy_body"
 
 
 # Default parameters
@@ -201,24 +202,21 @@ while 1:
         cubit_object = cubit_objects[cubit_item_to_id(receive[1])]
         channel.send(callable(getattr(cubit_object, receive[2])))
 
-    elif receive[0] == "isinstance":
-        # Compare the second item with a predefined cubit class
+    elif receive[0] == "get_object_type":
+        # Get the type of the cubit object
         compare_object = cubit_objects[cubit_item_to_id(receive[1])]
-
-        if receive[2] == cubit_vertex:
-            channel.send(isinstance(compare_object, cubit.Vertex))
-        elif receive[2] == cubit_curve:
-            channel.send(isinstance(compare_object, cubit.Curve))
-        elif receive[2] == cubit_surface:
-            channel.send(isinstance(compare_object, cubit.Surface))
-        elif receive[2] == cubit_volume:
-            channel.send(isinstance(compare_object, cubit.Volume))
+        if isinstance(compare_object, cubit.Vertex):
+            channel.send(cubit_vertex)
+        elif isinstance(compare_object, cubit.Curve):
+            channel.send(cubit_curve)
+        elif isinstance(compare_object, cubit.Surface):
+            channel.send(cubit_surface)
+        elif isinstance(compare_object, cubit.Volume):
+            channel.send(cubit_volume)
+        elif isinstance(compare_object, cubit.Body):
+            channel.send(cubit_body)
         else:
-            raise ValueError(
-                "Wrong compare type given! Expected vertex, curve, surface or volume, got{}".format(
-                    receive[2]
-                )
-            )
+            channel.send(None)
 
     elif receive[0] == "get_self_dir":
         # Return a list with all callable methods of this object
