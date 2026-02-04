@@ -30,9 +30,30 @@ import numpy as np
 from cubitpy.conf import cupy
 
 
-def add_node_sets(
-    cubit, exo, input_file, write_topology_information=True, use_exo_ids=False
-):
+def add_node_sets_external_geometry(cubit, input_file):
+    """Add a reference to the node sets contained in the cubit session/exo file
+    to the yaml file."""
+
+    # If there are no node sets we can return immediately
+    if len(cubit.node_sets) == 0:
+        return
+
+    # Write the node set information to the input file.
+    for node_set_id, node_set_data in cubit.node_sets.items():
+        bc_section, bc_description, _ = node_set_data
+        bc_description["E"] = node_set_id
+
+        if bc_section not in input_file.inlined.keys():
+            input_file[bc_section] = []
+
+        # when working with external .exo meshes, we simply have to specify that
+        # the id of the node set is in the exo file.
+        bc_description["ENTITY_TYPE"] = "node_set_id"
+
+        input_file[bc_section].append(bc_description)
+
+
+def add_node_sets_input_file(cubit, exo, input_file):
     """Add the node sets contained in the cubit session/exo file to the yaml
     file."""
 
@@ -67,46 +88,35 @@ def add_node_sets(
         node_set_key = node_set_id_to_exo_name[node_set_id]["key"]
         node_sets[geometry_type].append(exo.variables[node_set_key][:])
 
-        if use_exo_ids:
-            bc_description["E"] = node_set_id
-        else:
-            bc_description["E"] = len(node_sets[geometry_type])
+        bc_description["E"] = len(node_sets[geometry_type])
 
         if bc_section not in input_file.inlined.keys():
             input_file[bc_section] = []
 
-        if not write_topology_information:
-            # when working with external .exo meshes, we do not write the
-            # topology information for the node sets explicitly, since 4C will
-            # deduce them based on the node set ids, when reading the .exo file
-            bc_description["ENTITY_TYPE"] = "node_set_id"
-
         input_file[bc_section].append(bc_description)
 
-    if write_topology_information:
-        # this is the default case: when the mesh is supposed to be contained
-        # in the .yaml file, we have to write the topology information of the
-        # node sets
-        name_geometry_tuple = [
-            [cupy.geometry.vertex, "DNODE-NODE TOPOLOGY", "DNODE"],
-            [cupy.geometry.curve, "DLINE-NODE TOPOLOGY", "DLINE"],
-            [cupy.geometry.surface, "DSURF-NODE TOPOLOGY", "DSURFACE"],
-            [cupy.geometry.volume, "DVOL-NODE TOPOLOGY", "DVOL"],
-        ]
-        for geo, section_name, set_label in name_geometry_tuple:
-            if len(node_sets[geo]) > 0:
-                input_file[section_name] = []
-                for i_set, node_set in enumerate(node_sets[geo]):
-                    node_set.sort()
-                    for i_node in node_set:
-                        input_file[section_name].append(
-                            {
-                                "type": "NODE",
-                                "node_id": i_node,
-                                "d_type": set_label,
-                                "d_id": i_set + 1,
-                            }
-                        )
+    # When the mesh is supposed to be contained in the .yaml file, we have
+    # to write the topology information of the node sets
+    name_geometry_tuple = [
+        [cupy.geometry.vertex, "DNODE-NODE TOPOLOGY", "DNODE"],
+        [cupy.geometry.curve, "DLINE-NODE TOPOLOGY", "DLINE"],
+        [cupy.geometry.surface, "DSURF-NODE TOPOLOGY", "DSURFACE"],
+        [cupy.geometry.volume, "DVOL-NODE TOPOLOGY", "DVOL"],
+    ]
+    for geo, section_name, set_label in name_geometry_tuple:
+        if len(node_sets[geo]) > 0:
+            input_file[section_name] = []
+            for i_set, node_set in enumerate(node_sets[geo]):
+                node_set.sort()
+                for i_node in node_set:
+                    input_file[section_name].append(
+                        {
+                            "type": "NODE",
+                            "node_id": i_node,
+                            "d_type": set_label,
+                            "d_id": i_set + 1,
+                        }
+                    )
 
 
 def add_exodus_geometry_section(cubit, input_file, rel_exo_file_path):
@@ -213,7 +223,7 @@ def get_input_file_with_mesh(cubit):
     # create a deep copy of the input_file
     input_file = cubit.fourc_input.copy()
     # Add the node sets
-    add_node_sets(cubit, exo, input_file)
+    add_node_sets_input_file(cubit, exo, input_file)
 
     # Add the nodal data
     input_file["NODE COORDS"] = []
