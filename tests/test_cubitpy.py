@@ -867,11 +867,11 @@ def test_contact_condition_curve_to_curve():
     # Create and mesh two rectangles
     cubit.cmd("create surface rectangle width 1 height 1 zplane")
     solid1 = cubit.surface(cubit.get_last_id(cupy.geometry.surface))
-    cubit.cmd(f"surface {solid1.id()} size 1")
+    cubit.cmd(f"{formatter(solid1)} size 1")
     cubit.cmd("create surface rectangle width 2 height 1 zplane")
     solid2 = cubit.surface(cubit.get_last_id(cupy.geometry.surface))
-    cubit.cmd(f"move surface {solid2.id()} x 0 y -1 z 0 include_merged")
-    cubit.cmd(f"surface {solid2.id()} size 1")
+    cubit.cmd(f"move {formatter(solid2)} x 0 y -1 z 0 include_merged")
+    cubit.cmd(f"{formatter(solid2)} size 1")
     cubit.cmd("mesh surface all")
 
     # Add elements
@@ -1273,8 +1273,8 @@ def test_groups(group_with):
     )
 
     # Mesh the model.
-    cubit.cmd("volume {} size auto factor 8".format(volume.id()))
-    cubit.cmd("mesh {}".format(volume))
+    cubit.cmd("{} size auto factor 8".format(formatter(volume)))
+    cubit.cmd("mesh {}".format(formatter(volume)))
 
     if group_with == "hex":
         # Set the element block and use a user defined element description
@@ -1371,8 +1371,8 @@ def test_groups_multiple_sets(group_get_by):
     cubit.add_element_type(volume, cupy.element_type.hex8)
 
     # Mesh the model.
-    cubit.cmd("volume {} size auto factor 8".format(volume.id()))
-    cubit.cmd("mesh {}".format(volume))
+    cubit.cmd("{} size auto factor 8".format(formatter(volume)))
+    cubit.cmd("mesh {}".format(formatter(volume)))
 
     cubit.fourc_input["MATERIALS"] = [
         {
@@ -1467,7 +1467,7 @@ def test_serialize_nested_lists():
     block_2 = cubit.brick(0.5, 0.5, 0.5)
     subtracted_block = cubit.subtract([block_2], [block_1])
     cubit.cmd(
-        "volume {} size auto factor 9".format(subtracted_block[0].volumes()[0].id())
+        "{} size auto factor 9".format(formatter(subtracted_block[0].volumes()[0]))
     )
     subtracted_block[0].volumes()[0].mesh()
     cubit.add_element_type(subtracted_block[0].volumes()[0], cupy.element_type.hex8)
@@ -1586,7 +1586,7 @@ def test_create_parametric_surface():
         function_kwargs={"kwarg": 1.2},
     )
 
-    cubit.cmd("surface {} size auto factor 9".format(surface.id()))
+    cubit.cmd("{} size auto factor 9".format(formatter(surface)))
     surface.mesh()
 
     coordinates = [
@@ -1698,7 +1698,7 @@ def test_create_brick_by_corner_points():
         [np.dot(rotation_matrix, point) for point in corner_points]
     )
     brick = create_brick_by_corner_points(cubit, corner_points)
-    cubit.cmd(f"volume {brick.id()} size auto factor 9")
+    cubit.cmd(f"{formatter(brick)} size auto factor 9")
     brick.mesh()
     cubit.add_element_type(brick, cupy.element_type.hex8)
     compare_yaml(cubit)
@@ -2030,7 +2030,7 @@ def test_cmd_return():
     assert center.id() == 1
 
     arc_1 = cubit.cmd_return(
-        f"create curve arc center vertex {center.id()} radius 1 full",
+        f"create curve arc center {formatter(center)} radius 1 full",
         cupy.geometry.curve,
     )
     assert arc_1.get_geometry_type() == cupy.geometry.curve
@@ -2041,7 +2041,7 @@ def test_cmd_return():
     assert center.id() == 3
 
     arc_2 = cubit.cmd_return(
-        f"create curve arc center vertex {center.id()} radius 2 full",
+        f"create curve arc center {formatter(center)} radius 2 full",
         cupy.geometry.curve,
     )
     assert arc_2.get_geometry_type() == cupy.geometry.curve
@@ -2050,7 +2050,7 @@ def test_cmd_return():
     # We check the volume here as well, as in CoreForm a sheet body is created here that Cubit
     # internally handles as a volume. But, we don't want this volume returned here.
     create_surface_geometry = cubit.cmd_return_dict(
-        f"create surface curve {arc_1.id()} {arc_2.id()}",
+        f"create surface {formatter(arc_1, arc_2)}",
         [cupy.geometry.surface, cupy.geometry.volume],
     )
     for surface in create_surface_geometry[cupy.geometry.surface]:
@@ -2059,7 +2059,7 @@ def test_cmd_return():
     assert len(create_surface_geometry[cupy.geometry.volume]) == 0
 
     sweep_geometry = cubit.cmd_return_dict(
-        f"sweep surface {surface.id()} perpendicular distance 2",
+        f"sweep {formatter(surface)} perpendicular distance 2",
         [
             cupy.geometry.vertex,
             cupy.geometry.curve,
