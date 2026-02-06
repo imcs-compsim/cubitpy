@@ -2120,3 +2120,54 @@ def test_cubit_pass_array():
     for point, result in point_and_result:
         is_inside = block.point_containment(point)
         assert is_inside == result
+
+
+def test_cubit_compare_items():
+    """Test that two cubit items can be compared."""
+
+    cubit = CubitPy()
+    brick = cubit.brick(1, 2, 3)
+
+    assert brick == brick
+    assert not (brick != brick)
+    assert brick == cubit.body(brick.id())
+
+    assert brick.vertices()[0] == cubit.vertex(1)
+    assert brick.vertices()[2] == cubit.vertex(3)
+
+    assert brick.curves()[0] == cubit.curve(1)
+    assert brick.curves()[2] == cubit.curve(3)
+
+    assert brick.surfaces()[0] == cubit.surface(1)
+    assert brick.surfaces()[2] == cubit.surface(3)
+
+    assert brick.volumes()[0] == cubit.volume(1)
+
+    assert not (brick == brick.vertices()[0])
+    assert not (brick.vertices()[0] == brick.vertices()[1])
+    assert not (brick == None)
+    assert not (brick == "test_string")
+
+
+def test_cubit_hash_items():
+    """Test that cubit items can be used in sets and as dictionary keys."""
+
+    cubit = CubitPy()
+    brick = cubit.brick(1, 2, 3)
+
+    object_set = {brick, brick.surfaces()[0], brick.surfaces()[0], brick.volumes()[0]}
+    assert len(object_set) == 3
+    assert brick in object_set
+    assert cubit.body(brick.id()) in object_set
+    assert brick.surfaces()[0] in object_set
+    assert brick.volumes()[0] in object_set
+
+    object_dict = {
+        brick: "body",
+        brick.surfaces()[0]: "surface_1",
+        brick.volumes()[0]: "volume_1",
+    }
+    assert object_dict[brick] == "body"
+    assert object_dict[cubit.body(brick.id())] == "body"
+    assert object_dict[brick.surfaces()[0]] == "surface_1"
+    assert object_dict[brick.volumes()[0]] == "volume_1"
