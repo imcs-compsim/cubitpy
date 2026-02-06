@@ -292,6 +292,8 @@ class BoundaryConditionType(Enum):
     # Please use "solid_to_solid_contact" instead.
     solid_to_solid_surface_contact = auto()
     solid_to_solid_contact = auto()
+    periodic_rve_surface = auto()
+    periodic_rve_edge = auto()
 
     # fluid
     flow_rate = auto()
@@ -362,6 +364,15 @@ class BoundaryConditionType(Enum):
             geometry_type == GeometryType.curve
         ):
             return "FLUID NEUMANN INFLOW LINE CONDITIONS"
+
+        elif self == self.periodic_rve_surface and (
+            geometry_type == GeometryType.surface
+        ):
+            return "DESIGN SURF PERIODIC RVE 3D BOUNDARY CONDITIONS"
+
+        elif self == self.periodic_rve_edge and (geometry_type == GeometryType.curve):
+            return "DESIGN EDGE PERIODIC RVE 2D BOUNDARY CONDITIONS"
+
         else:
             raise ValueError(
                 "No implemented case for {} and {}!".format(self, geometry_type)
