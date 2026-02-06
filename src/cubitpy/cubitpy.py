@@ -27,14 +27,13 @@ import time
 import warnings
 from pathlib import Path
 
-import netCDF4
 from fourcipp.fourc_input import FourCInput
 
 from cubitpy.conf import GeometryType, cupy
 from cubitpy.cubit_group import CubitGroup
 from cubitpy.cubit_to_fourc_input import (
     add_exodus_geometry_section,
-    add_node_sets,
+    add_node_sets_external_geometry,
     get_input_file_with_mesh,
 )
 from cubitpy.cubit_wrapper.cubit_wrapper_host import CubitConnect
@@ -393,17 +392,12 @@ class CubitPy(object):
             # Export the mesh in exodus format
             exo_path = path_stem + ".exo"
             self.export_exo(exo_path)
-            # parse the exodus file
-            exo = netCDF4.Dataset(exo_path)
             # create a deep copy of the input_file
             input_file = self.fourc_input.copy()
             # Add the node sets
-            add_node_sets(
+            add_node_sets_external_geometry(
                 self,
-                exo,
                 input_file,
-                write_topology_information=False,
-                use_exo_ids=True,
             )
             # Add the problem geometry section
             rel_exo_path = os.path.relpath(exo_path, start=yaml_dir)
