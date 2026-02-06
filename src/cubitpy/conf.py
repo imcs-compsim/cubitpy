@@ -169,7 +169,7 @@ class CubitOptions(object):
 
         if not config_path:
             warnings.warn(
-                "CubitPy configuration file not found.Using default config: local",
+                "CubitPy configuration file not found. Using default config: local",
                 DeprecationWarning,
             )
             root_path = get_path("CUBIT_ROOT", os.path.isdir, throw_error=True)
