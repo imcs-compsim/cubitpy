@@ -21,3 +21,6 @@ test.py
 
 # .github should not be ignored
 !.github
+
+# Version file
+src/cubitpy/version.py
