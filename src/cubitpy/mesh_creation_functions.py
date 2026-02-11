@@ -24,6 +24,7 @@
 import numpy as np
 
 from cubitpy.conf import cupy
+from cubitpy.cubit_utility import formatter
 
 
 def create_brick(
@@ -74,10 +75,10 @@ def create_brick(
 
     # Create the block in cubit.
     solid = cubit.brick(h_x, h_y, h_z)
-    volume_id = solid.volumes()[0].id()
+    volume = solid.volumes()[0]
 
     # Set the element type.
-    cubit.add_element_type(solid.volumes()[0], el_type=element_type, **kwargs)
+    cubit.add_element_type(volume, el_type=element_type, **kwargs)
 
     # Set mesh properties.
     if mesh_interval is not None:
@@ -95,22 +96,19 @@ def create_brick(
 
         # Set the number of elements in x, y and z direction.
         for direction in range(3):
-            string = ""
-            for curve in dir_curves[direction]:
-                string += " {}".format(curve.id())
             cubit.cmd(
-                "curve {} interval {} scheme equal".format(
-                    string, mesh_interval[direction]
+                "{} interval {} scheme equal".format(
+                    formatter(dir_curves[direction]), mesh_interval[direction]
                 )
             )
 
     if mesh_factor is not None:
         # Set a cubit factor for the mesh size.
-        cubit.cmd("volume {} size auto factor {}".format(volume_id, mesh_factor))
+        cubit.cmd("{} size auto factor {}".format(formatter(volume), mesh_factor))
 
     # Mesh the created block.
     if mesh:
-        cubit.cmd("mesh volume {}".format(volume_id))
+        cubit.cmd("mesh {}".format(formatter(volume)))
 
     return solid
 
