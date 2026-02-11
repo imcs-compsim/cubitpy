@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools", "setuptools_scm[toml]"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -16,7 +16,13 @@ dependencies = [
   "numpy",
   "fourcipp"
 ]
-version = "0.1.1"
+
+dynamic = ["version"]
+
+[tool.setuptools_scm]
+version_file = "src/cubitpy/version.py"
+version_scheme = "post-release"
+local_scheme = "no-local-version"
 
 [project.urls]
 Repository = "https://github.com/imcs-compsim/cubitpy/"
@@ -28,6 +34,11 @@ dev = [
   "pytest",
   "pytest-cov",
   "deepdiff",
+]
+
+[tool.coverage.run]
+omit = [
+  "src/cubitpy/version.py",
 ]
 
 [tool.pytest.ini_options]
