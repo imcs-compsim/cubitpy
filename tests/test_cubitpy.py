@@ -2259,3 +2259,25 @@ def test_object_formatter():
         TypeError, match="Expected CubitObject, CubitGroup or int, but got "
     ):
         formatter(surface_1, 0.5)
+
+
+@pytest.mark.parametrize(
+    ("bc_type", "geometry", "expected_section"),
+    [
+        (
+            cupy.bc_type.periodic_rve_surface,
+            cupy.geometry.surface,
+            "DESIGN SURF PERIODIC RVE 3D BOUNDARY CONDITIONS",
+        ),
+        (
+            cupy.bc_type.periodic_rve_edge,
+            cupy.geometry.curve,
+            "DESIGN EDGE PERIODIC RVE 2D BOUNDARY CONDITIONS",
+        ),
+    ],
+)
+def test_periodic_rve_boundary_condition_section_headers(
+    bc_type, geometry, expected_section
+):
+    """Check section headers for periodic RVE boundary condition types."""
+    assert bc_type.get_dat_bc_section_header(geometry) == expected_section
