@@ -57,6 +57,11 @@ CUBIT_VERSION_TESTING_IDENTIFIER = {True: "coreform", False: "cubit15"}[
     cupy.is_coreform()
 ]
 
+PYTEST_PARAMETERIZE_EXO = [
+    "export_exo,name",
+    ((False, "without_exo"), (True, "with_exo")),
+]
+
 
 def check_tmp_dir():
     """Check if the temp directory exists, if not create it."""
@@ -1779,8 +1784,66 @@ def test_extrude_artery_of_aneurysm():
     )
 
 
-def test_yaml_with_exo_export():
-    """Test if exporting a yaml file with an exodus mesh works."""
+@pytest.mark.parametrize(*PYTEST_PARAMETERIZE_EXO)
+def test_node_sets_without_boundary_condition(export_exo, name):
+    """Test that node sets without boundary conditions work as expected."""
+
+    cubit = CubitPy()
+    create_brick(cubit, 1, 2, 3, mesh_interval=[2, 3, 4])
+
+    # Set two node sets with a boundary condition
+    cubit.add_node_set(
+        cubit.group(add_value="add surface 4"),
+        name="surface_4",
+        bc_type=cupy.bc_type.dirichlet,
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [1, 1, 1],
+            "VAL": [0, 0, 0],
+            "FUNCT": [None, None, None],
+        },
+        node_set_id=17,
+    )
+    cubit.add_node_set(
+        cubit.group(add_value="add surface 5"),
+        name="surface_5",
+        bc_type=cupy.bc_type.dirichlet,
+        bc_description={
+            "NUMDOF": 3,
+            "ONOFF": [1, 0, 0],
+            "VAL": [-1.0, 0.0, 0.0],
+            "FUNCT": [1, None, None],
+        },
+    )
+    cubit.add_node_set(cubit.group(add_value="add surface 3"), name="surface_3")
+    cubit.add_node_set(cubit.group(add_value="add curve 2"), name="curve_2")
+
+    # Add the element types
+    cubit.add_element_type(
+        cubit.group(add_value="add volume 1"),
+        el_type=cupy.element_type.hex8,
+        material={
+            "MAT": 1,
+        },
+        bc_description={
+            "KINEM": "nonlinear",
+        },
+    )
+    cubit.fourc_input.combine_sections(
+        {
+            "PROBLEM SIZE": {"DIM": 3},
+            "PROBLEM TYPE": {"PROBLEMTYPE": "Structure"},
+        }
+    )
+
+    # Compare the input file created for 4C.
+    compare_yaml(cubit, additional_identifier=name, mesh_in_exo=export_exo)
+
+
+@pytest.mark.parametrize(*PYTEST_PARAMETERIZE_EXO)
+def test_user_defined_node_set_and_block_ids(export_exo, name):
+    """Test that user-defined node set and block IDs work as expected."""
+
     # Set up Cubit.
     cubit = CubitPy()
 
@@ -1801,7 +1864,7 @@ def test_yaml_with_exo_export():
         name="slave",
         bc_type=cupy.bc_type.solid_to_solid_contact,
         bc_description={
-            "InterfaceID": 1,
+            "InterfaceID": 6,
             "Side": "Slave",
         },
     )
@@ -1810,7 +1873,7 @@ def test_yaml_with_exo_export():
         name="master",
         bc_type=cupy.bc_type.solid_to_solid_contact,
         bc_description={
-            "InterfaceID": 1,
+            "InterfaceID": 10,
             "Side": "Master",
         },
     )
@@ -1820,7 +1883,7 @@ def test_yaml_with_exo_export():
         bc_type=cupy.bc_type.dirichlet,
         bc_description={
             "NUMDOF": 3,
-            "ONOFF": [1, 1, 1],
+            "ONOFF": [4, 0, 0],
             "VAL": [0, 0, 0],
             "FUNCT": [None, None, None],
         },
@@ -1832,7 +1895,7 @@ def test_yaml_with_exo_export():
         bc_type=cupy.bc_type.dirichlet,
         bc_description={
             "NUMDOF": 3,
-            "ONOFF": [1, 0, 0],
+            "ONOFF": [12, 0, 0],
             "VAL": [-1.0, 0.0, 0.0],
             "FUNCT": [1, None, None],
         },
@@ -1855,7 +1918,7 @@ def test_yaml_with_exo_export():
         bc_type=cupy.bc_type.neumann,
         bc_description={
             "NUMDOF": 3,
-            "ONOFF": [1, 0, 0],
+            "ONOFF": [2, 0, 0],
             "VAL": [1.0, 0.0, 0.0],
             "FUNCT": [None, None, None],
         },
@@ -1866,7 +1929,7 @@ def test_yaml_with_exo_export():
         bc_type=cupy.bc_type.neumann,
         bc_description={
             "NUMDOF": 3,
-            "ONOFF": [1, 1, 0],
+            "ONOFF": [3, 0, 0],
             "VAL": [1.0, 0.0, 0.0],
             "FUNCT": [None, None, None],
         },
@@ -1904,7 +1967,7 @@ def test_yaml_with_exo_export():
     )
 
     # Compare the input file created for 4C.
-    compare_yaml(cubit, mesh_in_exo=True)
+    compare_yaml(cubit, additional_identifier=name, mesh_in_exo=export_exo)
 
 
 def test_yaml_with_exo_export_fsi():

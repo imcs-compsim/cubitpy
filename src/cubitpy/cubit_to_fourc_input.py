@@ -30,6 +30,41 @@ import numpy as np
 from cubitpy.conf import cupy
 
 
+def _exo_to_cubit_ids(exo, entry_type):
+    """Build mappings between Exodus IDs and Cubit IDs for blocks or
+    nodesets."""
+
+    if entry_type == "block":
+        exo_identifier = "eb"
+    elif entry_type == "nodeset":
+        exo_identifier = "ns"
+    else:
+        raise ValueError(f"Invalid entry type: {entry_type}")
+
+    # List of explicitly given names
+    names = []
+    for line in exo.variables[exo_identifier + "_names"]:
+        name = ""
+        for char in line:
+            if isinstance(char, np.bytes_):
+                name += char.decode("UTF-8")
+        if name == "":
+            name = None
+        names.append(name)
+
+    # Get information of all entries of the given type
+    entries_info = []
+    cubit_id_to_exo_id = {}
+    exo_id_to_cubit_id = {}
+    for i, cubit_id in enumerate(exo.variables[exo_identifier + "_prop1"][:]):
+        info = {"cubit_id": cubit_id, "exo_id": i, "name": names[i]}
+        cubit_id_to_exo_id[cubit_id] = i
+        exo_id_to_cubit_id[i] = cubit_id
+        entries_info.append(info)
+
+    return entries_info, cubit_id_to_exo_id, exo_id_to_cubit_id
+
+
 def add_node_sets_external_geometry(cubit, input_file):
     """Add a reference to the node sets contained in the cubit session/exo file
     to the yaml file."""
@@ -38,19 +73,26 @@ def add_node_sets_external_geometry(cubit, input_file):
     if len(cubit.node_sets) == 0:
         return
 
+    # To align with the ordering for mesh data in the input file, we sort the
+    # node sets according to their node set id.
+    node_set_keys_sorted = sorted(cubit.node_sets.keys())
+
     # Write the node set information to the input file.
-    for node_set_id, node_set_data in cubit.node_sets.items():
-        bc_section, bc_description, _ = node_set_data
-        bc_description["E"] = node_set_id
+    for node_set_id in node_set_keys_sorted:
+        bc_section, bc_description, _ = cubit.node_sets[node_set_id]
+        # Only add the boundary condition to the input file if a bc_section is
+        # given - we can also add node sets without a boundary condition.
+        if bc_section is not None:
+            bc_description["E"] = node_set_id
 
-        if bc_section not in input_file.inlined.keys():
-            input_file[bc_section] = []
+            if bc_section not in input_file.inlined.keys():
+                input_file[bc_section] = []
 
-        # when working with external .exo meshes, we simply have to specify that
-        # the id of the node set is in the exo file.
-        bc_description["ENTITY_TYPE"] = "node_set_id"
+            # when working with external .exo meshes, we simply have to specify that
+            # the id of the node set is in the exo file.
+            bc_description["ENTITY_TYPE"] = "node_set_id"
 
-        input_file[bc_section].append(bc_description)
+            input_file[bc_section].append(bc_description)
 
 
 def add_node_sets_input_file(cubit, exo, input_file):
@@ -62,19 +104,7 @@ def add_node_sets_input_file(cubit, exo, input_file):
         return
 
     # Get a mapping between the node set IDs and the node set names and keys in the exo file.
-    node_set_id_to_exo_name = {}
-    node_set_keys = [key for key in exo.variables.keys() if "node_ns" in key]
-    for i in range(len(exo.variables["ns_prop1"])):
-        node_set_id = int(exo.variables["ns_prop1"][i])
-        node_set_key = node_set_keys[i]
-        node_set_name = ""
-        for char in exo.variables["ns_names"][i]:
-            if isinstance(char, np.bytes_):
-                node_set_name += char.decode("UTF-8")
-        node_set_id_to_exo_name[node_set_id] = {
-            "key": node_set_key,
-            "name": node_set_name,
-        }
+    _, _, exo_id_to_cubit_id = _exo_to_cubit_ids(exo, "nodeset")
 
     # Sort the sets into their geometry type
     node_sets = {
@@ -83,17 +113,19 @@ def add_node_sets_input_file(cubit, exo, input_file):
         cupy.geometry.surface: [],
         cupy.geometry.volume: [],
     }
-    for node_set_id, node_set_data in cubit.node_sets.items():
-        bc_section, bc_description, geometry_type = node_set_data
-        node_set_key = node_set_id_to_exo_name[node_set_id]["key"]
-        node_sets[geometry_type].append(exo.variables[node_set_key][:])
+    for exo_id in range(len(exo.variables["ns_prop1"])):
+        cubit_id = exo_id_to_cubit_id[exo_id]
+        bc_section, bc_description, geometry_type = cubit.node_sets[cubit_id]
+        node_sets[geometry_type].append(exo.variables[f"node_ns{exo_id + 1}"][:])
 
         bc_description["E"] = len(node_sets[geometry_type])
 
-        if bc_section not in input_file.inlined.keys():
-            input_file[bc_section] = []
-
-        input_file[bc_section].append(bc_description)
+        # Only add the boundary condition to the input file if a bc_section is
+        # given - we can also add node sets without a boundary condition.
+        if bc_section is not None:
+            if bc_section not in input_file.inlined.keys():
+                input_file[bc_section] = []
+            input_file[bc_section].append(bc_description)
 
     # When the mesh is supposed to be contained in the .yaml file, we have
     # to write the topology information of the node sets
@@ -245,16 +277,15 @@ def get_input_file_with_mesh(cubit):
         )
 
     # Add the element connectivity
-    connectivity_keys = [key for key in exo.variables.keys() if "connect" in key]
-    connectivity_keys.sort()
+    _, _, exo_id_to_cubit_id = _exo_to_cubit_ids(exo, "block")
     i_element = 0
-    for key in connectivity_keys:
-        key_id = int(key[7:])
-        ele_type, block_dict = cubit.blocks[key_id]
+    for exo_id in range(len(exo.variables["eb_prop1"])):
+        cubit_id = exo_id_to_cubit_id[exo_id]
+        ele_type, block_dict = cubit.blocks[cubit_id]
         block_section = f"{ele_type.get_four_c_section()} ELEMENTS"
         if block_section not in input_file.sections.keys():
             input_file[block_section] = []
-        for connectivity in exo.variables[key][:]:
+        for connectivity in exo.variables[f"connect{exo_id + 1}"][:]:
             input_file[block_section].append(
                 {
                     "id": i_element + 1,
