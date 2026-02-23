@@ -298,17 +298,15 @@ class CubitPy(object):
 
         self._name_created_set("nodeset", node_set_id, name, item)
 
-        # Add data that will be written to bc file.
-        if (
-            (bc_section is None and bc_type is None)
-            or bc_section is not None
-            and bc_type is not None
-        ):
+        if bc_section is not None and bc_type is not None:
             raise ValueError(
-                'One of the two arguments "bc_section" and '
-                + '"bc_type" has to be set!'
+                "Got both bc_section and bc_type, but only one of them should be set."
             )
-        if bc_section is None:
+        elif bc_section is None and bc_type is None:
+            # In this case we don't want to add a bc section to the input file,
+            # so simply keep both values at None.
+            pass
+        elif bc_section is None and bc_type is not None:
             bc_section = bc_type.get_dat_bc_section_header(geometry_type)
         if bc_description is None:
             bc_description = {}

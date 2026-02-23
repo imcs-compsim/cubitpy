@@ -1,0 +1,74 @@
+PROBLEM TYPE:
+  PROBLEMTYPE: "Structure"
+PROBLEM SIZE:
+  DIM: 3
+STRUCTURE GEOMETRY:
+  FILE: "test_user_defined_node_set_and_block_ids_with_exo.exo"
+  SHOW_INFO: "detailed_summary"
+  ELEMENT_BLOCKS:
+    - ID: 1
+      SOLID:
+        HEX8:
+          MAT: 1
+          KINEM: "nonlinear"
+    - ID: 27
+      SOLID:
+        HEX8:
+          MAT: 2
+          KINEM: "nonlinear"
+DESIGN SURF MORTAR CONTACT CONDITIONS 3D:
+  - InterfaceID: 6
+    Side: "Slave"
+    E: 1
+    ENTITY_TYPE: "node_set_id"
+  - InterfaceID: 10
+    Side: "Master"
+    E: 2
+    ENTITY_TYPE: "node_set_id"
+DESIGN SURF DIRICH CONDITIONS:
+  - NUMDOF: 3
+    ONOFF: [4, 0, 0]
+    VAL: [0, 0, 0]
+    FUNCT:
+      - null
+      - null
+      - null
+    E: 17
+    ENTITY_TYPE: "node_set_id"
+  - NUMDOF: 3
+    ONOFF: [12, 0, 0]
+    VAL: [-1.0, 0.0, 0.0]
+    FUNCT:
+      - 1
+      - null
+      - null
+    E: 18
+    ENTITY_TYPE: "node_set_id"
+DESIGN LINE NEUMANN CONDITIONS:
+  - NUMDOF: 3
+    ONOFF: [3, 0, 0]
+    VAL: [1.0, 0.0, 0.0]
+    FUNCT:
+      - null
+      - null
+      - null
+    E: 15
+    ENTITY_TYPE: "node_set_id"
+  - NUMDOF: 3
+    ONOFF: [1, 0, 0]
+    VAL: [1.0, 0.0, 0.0]
+    FUNCT:
+      - null
+      - null
+      - null
+    E: 19
+    ENTITY_TYPE: "node_set_id"
+  - NUMDOF: 3
+    ONOFF: [2, 0, 0]
+    VAL: [1.0, 0.0, 0.0]
+    FUNCT:
+      - null
+      - null
+      - null
+    E: 20
+    ENTITY_TYPE: "node_set_id"
