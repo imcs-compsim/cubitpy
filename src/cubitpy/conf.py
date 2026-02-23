@@ -29,6 +29,7 @@ import shutil
 import warnings
 from pathlib import Path
 from sys import platform
+from typing import Any, Dict
 
 import yaml
 
@@ -57,7 +58,7 @@ def get_path(environment_variable, test_function, *, throw_error=True):
 class CubitOptions(object):
     """Object for types in cubitpy."""
 
-    _config = None
+    _config: Dict[str, Any] | None = None
 
     def __init__(self):
         # Temporary directory for cubitpy.
@@ -146,6 +147,16 @@ class CubitOptions(object):
             if missing:
                 fail("remote_config is missing required fields: " + ", ".join(missing))
 
+            user = remote_config["user"]
+            host = remote_config["host"]
+            if not isinstance(user, str) or not isinstance(host, str):
+                fail("remote_config 'user' and 'host' must be strings.")
+            if any(c.isspace() or c in "@:/\\" for c in user + host):
+                fail(
+                    "remote_config 'user' and 'host' must not contain whitespace "
+                    "or any of '@ : / \\'."
+                )
+
         if mode == "local":
             if "local_config" not in config:
                 fail("cubitpy_mode='local' requires a 'local_config' section.")
@@ -195,6 +206,13 @@ class CubitOptions(object):
         cls.validate_cubit_config()
 
     @classmethod
+    def get_config(cls) -> dict:
+        """Return loaded config or raise if not loaded."""
+        if cls._config is None:
+            raise RuntimeError("Config not loaded yet. Call load_cubit_config() first.")
+        return cls._config
+
+    @classmethod
     def get_cubit_exe_path(cls, **kwargs):
         """Get Path to cubit executable."""
         cubit_root = cls._config["local_config"]["cubit_path"]
@@ -215,6 +233,8 @@ class CubitOptions(object):
     @classmethod
     def get_cubit_lib_path(cls, **kwargs):
         """Get Path to cubit lib directory."""
+        if cls.is_remote():
+            return cls.get_remote_cubit_path()
         cubit_root = cls._config["local_config"]["cubit_path"]
         if platform == "linux" or platform == "linux2":
             return os.path.join(cubit_root, "bin")
@@ -229,33 +249,39 @@ class CubitOptions(object):
     @classmethod
     def get_cubit_interpreter(cls):
         """Get the path to the python interpreter to be used for CubitPy."""
-        cubit_root = cls._config["local_config"]["cubit_path"]
-        if cls.is_coreform():
-            pattern = "**/python3"
-            full_pattern = os.path.join(cubit_root, pattern)
-            python3_matches = glob.glob(full_pattern, recursive=True)
-            python3_files = [path for path in python3_matches if os.path.isfile(path)]
-            if not len(python3_files) == 1:
-                raise ValueError(
-                    "Could not find the path to the cubit python interpreter"
-                )
-            cubit_python_interpreter = python3_files[0]
-            return cubit_python_interpreter
+        if cls.is_remote():
+            remote_cubit_root = cls.get_remote_cubit_path()
+            return os.path.join(remote_cubit_root, "python3", "python.exe")
         else:
-            python2_path_env = get_path(
-                "CUBITPY_PYTHON2", os.path.isfile, throw_error=False
-            )
-            if python2_path_env is not None:
-                return python2_path_env
+            cubit_root = cls._config["local_config"]["cubit_path"]
+            if cls.is_coreform():
+                pattern = "**/python3"
+                full_pattern = os.path.join(cubit_root, pattern)
+                python3_matches = glob.glob(full_pattern, recursive=True)
+                python3_files = [
+                    path for path in python3_matches if os.path.isfile(path)
+                ]
+                if not len(python3_files) == 1:
+                    raise ValueError(
+                        "Could not find the path to the cubit python interpreter"
+                    )
+                cubit_python_interpreter = python3_files[0]
+                return cubit_python_interpreter
+            else:
+                python2_path_env = get_path(
+                    "CUBITPY_PYTHON2", os.path.isfile, throw_error=False
+                )
+                if python2_path_env is not None:
+                    return python2_path_env
 
-            if shutil.which("python2.7") is not None:
-                return "python2.7"
+                if shutil.which("python2.7") is not None:
+                    return "python2.7"
 
-            raise ValueError(
-                "Could not find a python2 interpreter. "
-                "You can specify this by setting the environment variable "
-                "CUBITPY_PYTHON2 to the path of your python2 interpreter."
-            )
+                raise ValueError(
+                    "Could not find a python2 interpreter. "
+                    "You can specify this by setting the environment variable "
+                    "CUBITPY_PYTHON2 to the path of your python2 interpreter."
+                )
 
     @classmethod
     def is_coreform(cls):
@@ -268,13 +294,56 @@ class CubitOptions(object):
 
     @classmethod
     def is_remote(cls) -> bool:
-        """Return True if cubit is running remotely based on the loaded
-        config."""
-        if cls._config is None:
+        """Return True if cubitpy is running in remote mode."""
+        return cls.get_config().get("cubitpy_mode") == "remote"
+
+    @classmethod
+    def _require_remote(cls):
+        """Return the remote_config section of the config file."""
+        config = cls.get_config()
+        if config.get("cubitpy_mode") != "remote":
             raise RuntimeError(
-                "Config not loaded yet. Call load_cubit_config() first use of is_remote."
+                "Remote config required but cubitpy_mode is not 'remote'."
             )
-        return cls._config.get("cubitpy_mode") == "remote"
+        return config["remote_config"]
+
+    @classmethod
+    def get_remote_user(cls):
+        """Return the remote user from config."""
+        return cls._require_remote()["user"]
+
+    @classmethod
+    def get_remote_host(cls):
+        """Return the remote host from config."""
+        return cls._require_remote()["host"]
+
+    @classmethod
+    def get_remote_cubit_path(cls):
+        """Return the remote cubit path from config."""
+        return cls._require_remote()["cubit_path"]
+
+    @classmethod
+    def get_remote_python_prologue(cls):
+        """remote python prologue: DLL path + sys.path + preload utility, then exec client"""
+        prologue = r"""
+                    import sys, os, types
+                    bin_dir, py_dir, site_pkgs, client_code, util_code, logical_client_path = channel.receive()
+                    try:
+                        if hasattr(os, "add_dll_directory"):
+                            os.add_dll_directory(bin_dir)
+                        else:
+                            os.environ["PATH"] = bin_dir + os.pathsep + os.environ.get("PATH","")
+                    except Exception as exc:
+                        print("Warning: failed to configure DLL directory or PATH:", exc, file=sys.stderr)
+                    for p in (bin_dir, py_dir, site_pkgs):
+                        if p and p not in sys.path:
+                            sys.path.insert(0, p)
+                    util_mod = types.ModuleType("cubit_wrapper_utility")
+                    exec(util_code, util_mod.__dict__)
+                    sys.modules["cubit_wrapper_utility"] = util_mod
+                    exec(compile(client_code, logical_client_path, "exec"))
+                    """
+        return prologue
 
 
 # Global object with options for cubitpy.
