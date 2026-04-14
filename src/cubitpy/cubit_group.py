@@ -344,9 +344,8 @@ class CubitGroup(object):
         return return_string
 
     def id(self):
-        """Return the string with all ids of the types in this object."""
-        id_list = self.get_item_ids_from_type(self.get_geometry_type())
-        return " ".join(map(str, id_list))
+        """Return the ID of this group."""
+        return self._id
 
     def __str__(self, *args, **kwargs):
         """The string representation of a group is its name."""

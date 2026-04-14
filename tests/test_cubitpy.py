@@ -1212,6 +1212,14 @@ def test_groups(group_with):
     group_explicit_type.add("add curve 1")
     group_explicit_type.add("add vertex 3")
 
+    # Check the IDs of the created groups (group 1 is "picked")
+    assert volume.id() == 2
+    assert surface_fix.id() == 3
+    assert surface_load.id() == 4
+    assert surface_load_alt.id() == 5
+    assert group_no_name.id() == 6
+    assert group_explicit_type.id() == 7
+
     if group_with == "volume":
         # Set the element block and use a user defined element description
         cubit.add_element_type(
