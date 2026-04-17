@@ -528,10 +528,9 @@ def test_element_types_quad(plane):
         material={"MAT": 1},
         bc_description={
             "KINEM": "nonlinear",
-            "EAS": "none",
-            "THICK": 1.0,
-            "STRESS_STRAIN": "plane_stress",
-            "GP": [3, 3],
+            "TECH": "none",
+            "THICKNESS": 1.0,
+            "PLANE_ASSUMPTION": "plane_stress",
         },
     )
     compare_yaml(cubit, additional_identifier=plane)
@@ -882,10 +881,9 @@ def test_contact_condition_curve_to_curve():
     # Add elements
     bc_desc = {
         "KINEM": "nonlinear",
-        "EAS": None,
-        "THICK": 1,
-        "STRESS_STRAIN": "plain_strain",
-        "GP": [2, 2],
+        "TECH": "none",
+        "THICKNESS": 1,
+        "PLANE_ASSUMPTION": "plane_stress",
     }
     cubit.add_element_type(
         solid1.surfaces()[0],
@@ -1153,10 +1151,9 @@ def test_group_of_surfaces():
         material={"MAT": 1},
         bc_description={
             "KINEM": "linear",
-            "EAS": "none",
-            "THICK": 1.0,
-            "STRESS_STRAIN": "plane_strain",
-            "GP": [3, 3],
+            "TECH": "none",
+            "THICKNESS": 1.0,
+            "PLANE_ASSUMPTION": "plane_stress",
         },
     )
 
