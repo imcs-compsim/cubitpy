@@ -221,7 +221,7 @@ def cubit_step_by_step_tutorial_cli(
                 "OUTPUT_STRUCTURE": True,
                 "DISPLACEMENT": True,
                 "ELEMENT_OWNER": True,
-                "STRESS_STRAIN": True,
+                "PLANE_ASSUMPTION": True,
             },
             "SOLVER 1": {"NAME": "Structure_Solver", "SOLVER": "Superlu"},
             "STRUCTURAL DYNAMIC": {

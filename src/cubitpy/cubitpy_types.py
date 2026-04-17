@@ -183,6 +183,7 @@ class ElementType(Enum):
             or self == self.tet10
             or self == self.tet4
             or self == self.wedge6
+            or self == self.quad4
         ):
             return "SOLID"
         elif self == self.hex8_fluid or self == self.tet4_fluid:
@@ -191,8 +192,6 @@ class ElementType(Enum):
             return "THERMO"
         elif self == self.hex8_scatra or self == self.tet4_scatra:
             return "TRANSP"
-        if self == self.quad4:
-            return "WALL"
         else:
             raise ValueError("Got wrong element type {}!".format(self))
 
