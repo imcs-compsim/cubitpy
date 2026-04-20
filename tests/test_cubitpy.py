@@ -21,6 +21,7 @@
 # THE SOFTWARE.
 """This script is used to test the functionality of the cubitpy module."""
 
+import copy
 import os
 import shutil
 import subprocess
@@ -29,6 +30,7 @@ import numpy as np
 import pytest
 from deepdiff import DeepDiff
 from fourcipp.fourc_input import FourCInput
+from fourcipp.utils.dict_utils import compare_nested_dicts_or_lists
 
 # Define the testing paths.
 testing_path = os.path.abspath(os.path.dirname(__file__))
@@ -304,6 +306,44 @@ def test_create_block_multiple():
     cubit_2 = CubitPy()
     create_block(cubit)
     create_block(cubit_2)
+
+
+def test_create_block_unaltered_element_dict():
+    """Test that the creation of an input file does not alter given
+    dictionaries."""
+
+    # Test that these dictionaries are not altered.
+    element_description = {"KINEM": "nonlinear", "TECH": "none"}
+    element_description_copy = copy.deepcopy(element_description)
+    bc_description = {
+        "NUMDOF": 3,
+        "ONOFF": [1, 1, 1],
+        "VAL": [0, 0, 0],
+        "FUNCT": [0, 0, 0],
+    }
+    bc_description_copy = copy.deepcopy(bc_description)
+
+    # Create the model
+    cubit = CubitPy()
+    brick = create_brick(
+        cubit, 1, 2, 3, mesh_interval=[1, 2, 3], bc_description=element_description_copy
+    )
+    cubit.add_node_set(
+        brick.volumes()[0],
+        name="body_load",
+        bc_type=cupy.bc_type.neumann,
+        bc_description=bc_description_copy,
+    )
+
+    # Write output alternating with and without exo, to check that everything stays the same.
+    compare_yaml(cubit)
+    compare_yaml(cubit, mesh_in_exo=True, additional_identifier="exo")
+    compare_yaml(cubit)
+    compare_yaml(cubit, mesh_in_exo=True, additional_identifier="exo")
+
+    # Check that the dictionaries did not change.
+    compare_nested_dicts_or_lists(element_description, element_description_copy)
+    compare_nested_dicts_or_lists(bc_description, bc_description_copy)
 
 
 def test_create_wedge6():

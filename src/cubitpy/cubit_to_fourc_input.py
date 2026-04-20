@@ -30,7 +30,7 @@ import numpy as np
 from cubitpy.conf import cupy
 
 
-def _exo_to_cubit_ids(exo, entry_type):
+def get_exo_info(exo, entry_type):
     """Build mappings between Exodus IDs and Cubit IDs for blocks or
     nodesets."""
 
@@ -53,16 +53,16 @@ def _exo_to_cubit_ids(exo, entry_type):
         names.append(name)
 
     # Get information of all entries of the given type
-    entries_info = []
-    cubit_id_to_exo_id = {}
-    exo_id_to_cubit_id = {}
-    for i, cubit_id in enumerate(exo.variables[exo_identifier + "_prop1"][:]):
-        info = {"cubit_id": cubit_id, "exo_id": i, "name": names[i]}
-        cubit_id_to_exo_id[cubit_id] = i
-        exo_id_to_cubit_id[i] = cubit_id
-        entries_info.append(info)
+    cubit_id_to_info = {}
+    exo_id_to_info = {}
+    for exo_id, cubit_id in enumerate(
+        exo.variables[exo_identifier + "_prop1"][:].tolist()
+    ):
+        info = {"cubit_id": cubit_id, "exo_id": exo_id, "name": names[exo_id]}
+        cubit_id_to_info[cubit_id] = info.copy()
+        exo_id_to_info[exo_id] = info.copy()
 
-    return entries_info, cubit_id_to_exo_id, exo_id_to_cubit_id
+    return cubit_id_to_info, exo_id_to_info
 
 
 def add_node_sets_external_geometry(cubit, input_file):
@@ -83,6 +83,9 @@ def add_node_sets_external_geometry(cubit, input_file):
         # Only add the boundary condition to the input file if a bc_section is
         # given - we can also add node sets without a boundary condition.
         if bc_section is not None:
+            # We modify the bc_description, thus we create a copy to avoid
+            # modifying the original CubitPy data.
+            bc_description = bc_description.copy()
             bc_description["E"] = node_set_id
 
             if bc_section not in input_file.inlined.keys():
@@ -104,7 +107,7 @@ def add_node_sets_input_file(cubit, exo, input_file):
         return
 
     # Get a mapping between the node set IDs and the node set names and keys in the exo file.
-    _, _, exo_id_to_cubit_id = _exo_to_cubit_ids(exo, "nodeset")
+    _, exo_id_to_info = get_exo_info(exo, "nodeset")
 
     # Sort the sets into their geometry type
     node_sets = {
@@ -114,10 +117,13 @@ def add_node_sets_input_file(cubit, exo, input_file):
         cupy.geometry.volume: [],
     }
     for exo_id in range(len(exo.variables["ns_prop1"])):
-        cubit_id = exo_id_to_cubit_id[exo_id]
+        cubit_id = exo_id_to_info[exo_id]["cubit_id"]
         bc_section, bc_description, geometry_type = cubit.node_sets[cubit_id]
         node_sets[geometry_type].append(exo.variables[f"node_ns{exo_id + 1}"][:])
 
+        # We modify the bc_description, thus we create a copy to avoid
+        # modifying the original CubitPy data.
+        bc_description = bc_description.copy()
         bc_description["E"] = len(node_sets[geometry_type])
 
         # Only add the boundary condition to the input file if a bc_section is
@@ -172,13 +178,12 @@ def add_exodus_geometry_section(cubit, input_file, rel_exo_file_path):
     """
 
     # Iterate over all blocks and add them to the input file
+    element_blocks = {}
     for cur_block_id, cur_block_data in cubit.blocks.items():
         # retrieve the name of the geometry section that this block belongs to
         cur_geometry_section_key = cur_block_data[0].get_four_c_section() + " GEOMETRY"
-        # If the geometry section for this block does not exist yet, create it
-        if input_file.sections.get(cur_geometry_section_key) is None:
-            # add the geometry section to the input file
-            input_file[cur_geometry_section_key] = {
+        if cur_geometry_section_key not in element_blocks:
+            element_blocks[cur_geometry_section_key] = {
                 "FILE": rel_exo_file_path,
                 "SHOW_INFO": "detailed_summary",
                 "ELEMENT_BLOCKS": [],
@@ -193,9 +198,11 @@ def add_exodus_geometry_section(cubit, input_file, rel_exo_file_path):
             four_c_element_name: {cubit_element_name: cur_block_data[1]},
         }
         # append the dictionary with the element block information to the element block list
-        input_file[cur_geometry_section_key]["ELEMENT_BLOCKS"].append(
-            element_block_dict
-        )
+        element_block_list = element_blocks[cur_geometry_section_key]["ELEMENT_BLOCKS"]
+        element_block_list.append(element_block_dict)
+
+    # Add the data to the input file - this will add a deep copy.
+    input_file.combine_sections(element_blocks)
 
 
 def get_element_connectivity_list(connectivity):
@@ -277,10 +284,10 @@ def get_input_file_with_mesh(cubit):
         )
 
     # Add the element connectivity
-    _, _, exo_id_to_cubit_id = _exo_to_cubit_ids(exo, "block")
+    _, exo_id_to_info = get_exo_info(exo, "block")
     i_element = 0
     for exo_id in range(len(exo.variables["eb_prop1"])):
-        cubit_id = exo_id_to_cubit_id[exo_id]
+        cubit_id = exo_id_to_info[exo_id]["cubit_id"]
         ele_type, block_dict = cubit.blocks[cubit_id]
         block_section = f"{ele_type.get_four_c_section()} ELEMENTS"
         if block_section not in input_file.sections.keys():
