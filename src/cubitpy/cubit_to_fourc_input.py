@@ -22,15 +22,23 @@
 """Implements a function that converts a cubit session to a dat file that can
 be used with 4C."""
 
+from __future__ import annotations
+
 import os
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 import netCDF4
 import numpy as np
+from fourcipp.fourc_input import FourCInput
 
-from cubitpy.conf import cupy
+from cubitpy.conf import GeometryType, cupy
+
+if TYPE_CHECKING:
+    from cubitpy.cubitpy import CubitPy
 
 
-def get_exo_info(exo, entry_type):
+def get_exo_info(exo, entry_type) -> tuple[dict, dict]:
     """Build mappings between Exodus IDs and Cubit IDs for blocks or
     nodesets."""
 
@@ -44,7 +52,7 @@ def get_exo_info(exo, entry_type):
     # List of explicitly given names
     names = []
     for line in exo.variables[exo_identifier + "_names"]:
-        name = ""
+        name: str | None = ""
         for char in line:
             if isinstance(char, np.bytes_):
                 name += char.decode("UTF-8")
@@ -65,7 +73,7 @@ def get_exo_info(exo, entry_type):
     return cubit_id_to_info, exo_id_to_info
 
 
-def add_node_sets_external_geometry(cubit, input_file):
+def add_node_sets_external_geometry(cubit: CubitPy, input_file: FourCInput) -> None:
     """Add a reference to the node sets contained in the cubit session/exo file
     to the yaml file."""
 
@@ -79,13 +87,14 @@ def add_node_sets_external_geometry(cubit, input_file):
 
     # Write the node set information to the input file.
     for node_set_id in node_set_keys_sorted:
-        bc_section, bc_description, _ = cubit.node_sets[node_set_id]
+        node_set_info = cubit.node_sets[node_set_id]
         # Only add the boundary condition to the input file if a bc_section is
         # given - we can also add node sets without a boundary condition.
+        bc_section = node_set_info.bc_section
         if bc_section is not None:
             # We modify the bc_description, thus we create a copy to avoid
             # modifying the original CubitPy data.
-            bc_description = bc_description.copy()
+            bc_description = node_set_info.bc_description.copy()
             bc_description["E"] = node_set_id
 
             if bc_section not in input_file.inlined.keys():
@@ -98,7 +107,7 @@ def add_node_sets_external_geometry(cubit, input_file):
             input_file[bc_section].append(bc_description)
 
 
-def add_node_sets_input_file(cubit, exo, input_file):
+def add_node_sets_input_file(cubit: CubitPy, exo, input_file: FourCInput) -> None:
     """Add the node sets contained in the cubit session/exo file to the yaml
     file."""
 
@@ -110,7 +119,7 @@ def add_node_sets_input_file(cubit, exo, input_file):
     _, exo_id_to_info = get_exo_info(exo, "nodeset")
 
     # Sort the sets into their geometry type
-    node_sets = {
+    node_sets: dict[GeometryType, list] = {
         cupy.geometry.vertex: [],
         cupy.geometry.curve: [],
         cupy.geometry.surface: [],
@@ -118,16 +127,19 @@ def add_node_sets_input_file(cubit, exo, input_file):
     }
     for exo_id in range(len(exo.variables["ns_prop1"])):
         cubit_id = exo_id_to_info[exo_id]["cubit_id"]
-        bc_section, bc_description, geometry_type = cubit.node_sets[cubit_id]
-        node_sets[geometry_type].append(exo.variables[f"node_ns{exo_id + 1}"][:])
+        node_set_info = cubit.node_sets[cubit_id]
+        node_sets[node_set_info.geometry_type].append(
+            exo.variables[f"node_ns{exo_id + 1}"][:]
+        )
 
         # We modify the bc_description, thus we create a copy to avoid
         # modifying the original CubitPy data.
-        bc_description = bc_description.copy()
-        bc_description["E"] = len(node_sets[geometry_type])
+        bc_description = node_set_info.bc_description.copy()
+        bc_description["E"] = len(node_sets[node_set_info.geometry_type])
 
         # Only add the boundary condition to the input file if a bc_section is
         # given - we can also add node sets without a boundary condition.
+        bc_section = node_set_info.bc_section
         if bc_section is not None:
             if bc_section not in input_file.inlined.keys():
                 input_file[bc_section] = []
@@ -157,7 +169,9 @@ def add_node_sets_input_file(cubit, exo, input_file):
                     )
 
 
-def add_exodus_geometry_section(cubit, input_file, rel_exo_file_path):
+def add_exodus_geometry_section(
+    cubit: CubitPy, input_file: FourCInput, rel_exo_file_path: str
+) -> None:
     """Add the problem specific geometry section to the input file required to
     directly read the mesh from an exodus file.
 
@@ -169,7 +183,7 @@ def add_exodus_geometry_section(cubit, input_file, rel_exo_file_path):
     cubit: CubitPy
         The python object for managing the current Cubit session (exclusively
         used in a read-only fashion).
-    input_file: dict
+    input_file: FourCInput
         The input file dictionary that will be modified to include the geometry
         section.
     rel_exo_file_path: str
@@ -178,7 +192,7 @@ def add_exodus_geometry_section(cubit, input_file, rel_exo_file_path):
     """
 
     # Iterate over all blocks and add them to the input file
-    element_blocks = {}
+    element_blocks: dict[str, dict] = {}
     for cur_block_id, cur_block_data in cubit.blocks.items():
         # retrieve the name of the geometry section that this block belongs to
         cur_geometry_section_key = cur_block_data[0].get_four_c_section() + " GEOMETRY"
@@ -249,13 +263,13 @@ def get_element_connectivity_list(connectivity):
         return connectivity.tolist()
 
 
-def get_input_file_with_mesh(cubit):
+def get_input_file_with_mesh(cubit: CubitPy) -> FourCInput:
     """Return a copy of cubit.fourc_input with mesh data (nodes and elements)
     added."""
 
     # Create exodus file
     os.makedirs(cupy.temp_dir, exist_ok=True)
-    exo_path = os.path.join(cupy.temp_dir, "cubitpy.exo")
+    exo_path = Path(cupy.temp_dir) / "cubitpy.exo"
     cubit.export_exo(exo_path)
     exo = netCDF4.Dataset(exo_path)
 

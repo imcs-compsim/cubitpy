@@ -25,6 +25,7 @@ import os
 import subprocess  # nosec B404
 import time
 import warnings
+from dataclasses import dataclass
 from pathlib import Path
 
 from fourcipp.fourc_input import FourCInput
@@ -39,7 +40,9 @@ from cubitpy.cubit_to_fourc_input import (
 from cubitpy.cubit_wrapper.cubit_wrapper_host import CubitConnect
 
 
-def _get_and_check_ids(name, container, id_list, given_id):
+def _get_and_check_ids(
+    name: str, container: dict, id_list: list, given_id: int | None
+) -> int:
     """Perform checks for the block and node set IDs used in CubitPy."""
 
     # Check that the IDs stored in container are the same as created with this function.
@@ -57,6 +60,16 @@ def _get_and_check_ids(name, container, id_list, given_id):
     elif given_id in id_list:
         raise ValueError(f"The provided {name} id {given_id} already exists {id_list}")
     return given_id
+
+
+@dataclass
+class _NodeSetInfo:
+    """Data class that contains information of a node set."""
+
+    bc_section: str
+    bc_description: dict
+    geometry_type: GeometryType
+    name: str | None
 
 
 class CubitPy(object):
@@ -97,7 +110,7 @@ class CubitPy(object):
     def _default_cubit_variables(self):
         """Set the default values for the lists and counters used in cubit."""
         self.blocks = {}
-        self.node_sets = {}
+        self.node_sets: dict[int, _NodeSetInfo] = {}
         self.fourc_input = FourCInput()
         self.fourc_input.type_converter.register_numpy_types()
 
@@ -310,7 +323,12 @@ class CubitPy(object):
             bc_section = bc_type.get_dat_bc_section_header(geometry_type)
         if bc_description is None:
             bc_description = {}
-        self.node_sets[node_set_id] = [bc_section, bc_description, geometry_type]
+        self.node_sets[node_set_id] = _NodeSetInfo(
+            bc_section=bc_section,
+            bc_description=bc_description,
+            geometry_type=geometry_type,
+            name=name,
+        )
 
     def get_ids(self, geometry_type):
         """Get a list with all available ids of a certain geometry type."""
