@@ -37,6 +37,7 @@ from cubitpy.cubit_to_fourc_input import (
     add_node_sets_external_geometry,
     get_input_file_with_mesh,
 )
+from cubitpy.cubit_utility import node_set_info_to_string
 from cubitpy.cubit_wrapper.cubit_wrapper_host import CubitConnect
 
 
@@ -376,23 +377,74 @@ class CubitPy(object):
         else:
             self.cubit.cmd('save as "{}" overwrite'.format(path))
 
-    def export_exo(self, path):
-        """Export the mesh."""
+    def export_exo(self, path: Path, *, add_node_set_info: bool = True) -> None:
+        """Export the mesh.
+
+        Args:
+            path:
+                Path to write the exodus file to.
+            add_node_set_info:
+                This flag decides if we add decoded node set information like name and
+                geometry type to the node set names of the exported exodus mesh. Does
+                not alter the node set names in the cubit session.
+        """
+
+        if add_node_set_info:
+            # We rename the node sets such that they contain the node set name, ID
+            # and geometry type. Then we export the set and rename it to the original
+            # name again at the end of this function.
+
+            rename_mapping = {}
+            for node_set_id, node_set_info in self.node_sets.items():
+                name_from_info = node_set_info.name
+                name_from_cubit = self.cubit.get_exodus_entity_name(
+                    "nodeset", node_set_id
+                )
+                if name_from_info is not None and name_from_info != name_from_cubit:
+                    raise ValueError(
+                        f"The name of the node set with id {node_set_id} in Cubit "
+                        f"({name_from_cubit}) does not match the name stored in CubitPy ({name_from_info})."
+                    )
+                new_name = node_set_info_to_string(
+                    id=node_set_id,
+                    geometry_type=node_set_info.geometry_type,
+                    name=name_from_info,
+                )
+                self.cubit.cmd('nodeset {} name "{}"'.format(node_set_id, new_name))
+                rename_mapping[node_set_id] = name_from_cubit
+
         self.cubit.cmd('export mesh "{}" dimension 3 overwrite'.format(path))
 
-    def dump(self, yaml_path, mesh_in_exo=False):
+        if add_node_set_info:
+            for node_set_id in self.node_sets.keys():
+                self.cubit.cmd(
+                    'nodeset {} name "{}"'.format(
+                        node_set_id, rename_mapping[node_set_id]
+                    )
+                )
+
+    def dump(
+        self,
+        yaml_path,
+        mesh_in_exo: bool = False,
+        mesh_in_exo_add_node_set_info: bool = True,
+    ) -> None:
         """Create the yaml file and save it in under provided yaml_path.
 
-        Args
-        ----
-        yaml_path: str
-            Path where the input file will be saved
-        mesh_in_exo: bool
-            If True, the mesh will be exported in exodus format and the input file
-            will contain a reference to the exodus file. If False, the mesh will
-            be exported in the 4C format and the input file will contain the mesh
-            directly in the yaml file.
-            Default is False.
+        Args:
+            yaml_path:
+                Path where the input file will be saved
+            mesh_in_exo:
+                If True, the mesh will be exported in exodus format and the input file
+                will contain a reference to the exodus file. If False, the mesh will
+                be exported in the 4C format and the input file will contain the mesh
+                directly in the yaml file.
+                Default is False.
+            mesh_in_exo_add_node_set_info:
+                Only relevant if `mesh_in_exo` is true. This flag determines whether
+                decoded node set information, such as name and geometry type, is added
+                to the node set names of the exported exodus mesh. This does not alter
+                the node set names in the cubit session.
         """
 
         # Check if output path exists
@@ -407,7 +459,7 @@ class CubitPy(object):
             path_stem = yaml_path.removesuffix(".yaml").removesuffix(".4C")
             # Export the mesh in exodus format
             exo_path = path_stem + ".exo"
-            self.export_exo(exo_path)
+            self.export_exo(exo_path, add_node_set_info=mesh_in_exo_add_node_set_info)
             # create a deep copy of the input_file
             input_file = self.fourc_input.copy()
             # Add the node sets
