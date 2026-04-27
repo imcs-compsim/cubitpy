@@ -1,0 +1,9 @@
+STRUCTURE GEOMETRY:
+  FILE: "test_element_types_tet_single_element_with_exo.exo"
+  SHOW_INFO: "detailed_summary"
+  ELEMENT_BLOCKS:
+    - ID: 1
+      SOLID:
+        TET4:
+          MAT: 1
+          KINEM: "nonlinear"
