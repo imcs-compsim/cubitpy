@@ -425,7 +425,7 @@ class CubitPy(object):
 
     def dump(
         self,
-        yaml_path,
+        yaml_path: Path | str,
         mesh_in_exo: bool = False,
         mesh_in_exo_add_node_set_info: bool = True,
     ) -> None:
@@ -448,28 +448,34 @@ class CubitPy(object):
         """
 
         # Check if output path exists
-        yaml_dir = os.path.dirname(os.path.abspath(yaml_path))
-        if not os.path.exists(yaml_dir):
-            raise ValueError("Path {} does not exist!".format(yaml_dir))
+        yaml_path = Path(yaml_path)
+        yaml_dir = yaml_path.resolve().parent
+        if not yaml_dir.exists():
+            raise ValueError(f"Path {yaml_dir} does not exist!")
 
         if mesh_in_exo:
-            # Determine the path stem: Strip the '(.4C).yaml' suffix
-            # (if the filename does not contain '.4C' the second call to
-            # 'removesuffix' won't alter the string at all)
-            path_stem = yaml_path.removesuffix(".yaml").removesuffix(".4C")
+            # Remove suffixes (.yaml and optionally .4C)
+            path_stem = yaml_path
+            if path_stem.suffix == ".yaml":
+                path_stem = path_stem.with_suffix("")
+            if path_stem.suffix == ".4C":
+                path_stem = path_stem.with_suffix("")
+
             # Export the mesh in exodus format
-            exo_path = path_stem + ".exo"
+            exo_path = path_stem.with_suffix(".exo")
             self.export_exo(exo_path, add_node_set_info=mesh_in_exo_add_node_set_info)
+
             # create a deep copy of the input_file
             input_file = self.fourc_input.copy()
+
             # Add the node sets
             add_node_sets_external_geometry(
                 self,
                 input_file,
             )
+
             # Add the problem geometry section
-            rel_exo_path = os.path.relpath(exo_path, start=yaml_dir)
-            add_exodus_geometry_section(self, input_file, rel_exo_path)
+            add_exodus_geometry_section(self, input_file, exo_path.name)
         else:
             input_file = get_input_file_with_mesh(self)
         # Export the input file in YAML format
