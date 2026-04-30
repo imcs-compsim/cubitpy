@@ -170,7 +170,7 @@ def add_node_sets_input_file(cubit: CubitPy, exo, input_file: FourCInput) -> Non
 
 
 def add_exodus_geometry_section(
-    cubit: CubitPy, input_file: FourCInput, rel_exo_file_path: str
+    cubit: CubitPy, input_file: FourCInput, exo_file_name: str
 ) -> None:
     """Add the problem specific geometry section to the input file required to
     directly read the mesh from an exodus file.
@@ -186,9 +186,9 @@ def add_exodus_geometry_section(
     input_file: FourCInput
         The input file dictionary that will be modified to include the geometry
         section.
-    rel_exo_file_path: str
-        The relative path (as seen from the yaml input file) to the exodus
-        file that contains the mesh.
+    exo_file_name: str
+        Name of the exodus file that contains the mesh, it is assumed that this
+        file is in the same directory as the yaml input file.
     """
 
     # Iterate over all blocks and add them to the input file
@@ -198,7 +198,7 @@ def add_exodus_geometry_section(
         cur_geometry_section_key = cur_block_data[0].get_four_c_section() + " GEOMETRY"
         if cur_geometry_section_key not in element_blocks:
             element_blocks[cur_geometry_section_key] = {
-                "FILE": rel_exo_file_path,
+                "FILE": exo_file_name,
                 "SHOW_INFO": "detailed_summary",
                 "ELEMENT_BLOCKS": [],
             }

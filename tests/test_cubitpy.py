@@ -25,6 +25,7 @@ import copy
 import os
 import shutil
 import subprocess
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -122,15 +123,15 @@ def compare_yaml(
     check_tmp_dir()
 
     # File paths
-    ref_file = os.path.join(testing_input, compare_name + ".4C.yaml")
-    out_file = os.path.join(testing_temp, compare_name + ".4C.yaml")
+    ref_file = Path(testing_input) / (compare_name + ".4C.yaml")
+    out_file = Path(testing_temp) / (compare_name + ".4C.yaml")
 
     if mesh_in_exo:
         # dump the input script with the mesh in exodus format
         cubit.dump(out_file, mesh_in_exo=True)
         # make sure the directory also contains the exo mesh
-        out_file_stem = out_file.removesuffix(".4C.yaml")
-        assert os.path.exists(f"{out_file_stem}.exo")
+        out_file_stem = out_file.with_name(out_file.name.removesuffix(".4C.yaml"))
+        assert out_file_stem.with_suffix(".exo").exists()
     else:
         cubit.dump(out_file)
 
@@ -642,7 +643,7 @@ def test_block_function():
             count += 1
 
     # Compare the input file created for 4C.
-    out_file = os.path.join(testing_temp, "tmp" + ".4C.yaml")
+    out_file = Path(testing_temp) / ("test_block_function.4C.yaml")
     cubit.dump(out_file)
     compare_yaml(cubit)
 
