@@ -21,7 +21,7 @@
 # THE SOFTWARE.
 """Utility functions for the use of cubitpy."""
 
-from cubitpy.conf import cupy
+from cubitpy.conf import GeometryType, cupy
 from cubitpy.cubit_group import CubitGroup
 from cubitpy.cubit_wrapper.cubit_wrapper_host import CubitObject
 
@@ -141,3 +141,42 @@ def formatter(*args, geometry_type=None) -> str:
     return "{} {}".format(
         geometry_type.get_cubit_string(), " ".join(map(str, item_list))
     )
+
+
+DATA_TO_STRING_PREFIX = "cpy_"
+GEOMETRY_TO_CHARACTER = {
+    cupy.geometry.vertex: "p",
+    cupy.geometry.curve: "c",
+    cupy.geometry.surface: "s",
+    cupy.geometry.volume: "v",
+}
+CHARACTER_TO_GEOMETRY = {value: key for key, value in GEOMETRY_TO_CHARACTER.items()}
+
+
+def node_set_info_to_string(
+    id: int, geometry_type: GeometryType, name: str | None
+) -> str:
+    """Convert node set information to a string."""
+    parts = [str(id), GEOMETRY_TO_CHARACTER[geometry_type]]
+    if name is not None:
+        parts.append(name)
+    return_string = DATA_TO_STRING_PREFIX + "_".join(parts)
+    if len(return_string) > 148:
+        raise ValueError(
+            f"Converted string {return_string} is too long ({len(return_string)})."
+        )
+    return return_string
+
+
+def string_to_node_set_info(string: str) -> tuple[int, GeometryType, str | None]:
+    """Convert a string to node set information."""
+    if not string.startswith(DATA_TO_STRING_PREFIX):
+        raise ValueError(
+            f"Expected string to start with '{DATA_TO_STRING_PREFIX}', but got {string}"
+        )
+    string_without_prefix = string[len(DATA_TO_STRING_PREFIX) :]
+    parts = string_without_prefix.split("_", 2)
+    id = int(parts[0])
+    geometry_type = CHARACTER_TO_GEOMETRY[parts[1]]
+    name = parts[2] if len(parts) > 2 else None
+    return id, geometry_type, name

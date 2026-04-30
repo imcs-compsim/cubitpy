@@ -1,0 +1,17 @@
+STRUCTURE GEOMETRY:
+  FILE: "test_create_block_unaltered_element_dict_exo.exo"
+  SHOW_INFO: "detailed_summary"
+  ELEMENT_BLOCKS:
+    - ID: 1
+      SOLID:
+        HEX8:
+          MAT: 1
+          KINEM: "nonlinear"
+          TECH: "none"
+DESIGN VOL NEUMANN CONDITIONS:
+  - NUMDOF: 3
+    ONOFF: [1, 1, 1]
+    VAL: [0, 0, 0]
+    FUNCT: [0, 0, 0]
+    E: 1
+    ENTITY_TYPE: "node_set_id"
