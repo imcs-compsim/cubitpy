@@ -40,7 +40,13 @@ testing_external_geometry = os.path.join(testing_path, "external-geometry")
 
 # CubitPy imports.
 from cubitpy.conf import cupy
-from cubitpy.cubit_utility import formatter, get_surface_center, import_fluent_geometry
+from cubitpy.cubit_utility import (
+    formatter,
+    get_surface_center,
+    import_fluent_geometry,
+    node_set_info_to_string,
+    string_to_node_set_info,
+)
 from cubitpy.cubitpy import CubitPy
 from cubitpy.geometry_creation_functions import (
     create_brick_by_corner_points,
@@ -2389,3 +2395,55 @@ def test_periodic_rve_boundary_condition_section_headers(
 ):
     """Check section headers for periodic RVE boundary condition types."""
     assert bc_type.get_dat_bc_section_header(geometry) == expected_section
+
+
+@pytest.mark.parametrize(
+    "geometry",
+    (
+        cupy.geometry.vertex,
+        cupy.geometry.curve,
+        cupy.geometry.surface,
+        cupy.geometry.volume,
+    ),
+)
+@pytest.mark.parametrize(
+    "name",
+    (
+        None,
+        "test",
+        "test_name_with_underscore",
+        "test_name_:-with-special.characters",
+    ),
+)
+def test_node_set_info_to_string(geometry, name):
+    """Test the node set info to string conversion functions."""
+
+    # Serialize list
+    id = 123
+    string = node_set_info_to_string(id, geometry, name)
+    data_recovered = string_to_node_set_info(string)
+    assert id == data_recovered[0]
+    assert geometry == data_recovered[1]
+    assert name == data_recovered[2]
+
+
+def test_node_set_info_to_string_errors():
+    """Test the node set info to string conversion functions raise errors when
+    appropriate."""
+
+    id = 123
+    geometry = cupy.geometry.vertex
+
+    with pytest.raises(
+        ValueError,
+        match="Converted string",
+    ):
+        name = "this_name_is_way_too_long_" + "a" * 150
+        node_set_info_to_string(id, geometry, name)
+
+    # Wrong prefix
+    with pytest.raises(
+        ValueError,
+        match="Expected string to start with",
+    ):
+        string_to_node_set_info("abc")
