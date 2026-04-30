@@ -202,14 +202,14 @@ def add_exodus_geometry_section(
                 "SHOW_INFO": "detailed_summary",
                 "ELEMENT_BLOCKS": [],
             }
-        # retrieve the fourc name (e.g., SOLID/FLUID/...) and the cubit name
-        # (e.g., HEX8/TET4/...) for the element
+        # retrieve the 4C element name (e.g., SOLID/FLUID/...) and the 4C cell
+        # type name (e.g., HEX8/TET4/...) for the element
         four_c_element_name = cur_block_data[0].get_four_c_name()
-        _, cubit_element_name = cur_block_data[0].get_cubit_names()
+        four_c_cell_type = cur_block_data[0].get_four_c_type()
         # add block id, fourc element name and element data string to the element block dictionary
         element_block_dict = {
             "ID": cur_block_id,
-            four_c_element_name: {cubit_element_name: cur_block_data[1]},
+            four_c_element_name: {four_c_cell_type: cur_block_data[1]},
         }
         # append the dictionary with the element block information to the element block list
         element_block_list = element_blocks[cur_geometry_section_key]["ELEMENT_BLOCKS"]

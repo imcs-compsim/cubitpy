@@ -449,6 +449,31 @@ def test_element_types_tet():
     compare_yaml(cubit, additional_identifier=CUBIT_VERSION_TESTING_IDENTIFIER)
 
 
+@pytest.mark.parametrize(*PYTEST_PARAMETERIZE_EXO)
+def test_element_types_tet_single_element(export_exo, name):
+    """Create a single tet element."""
+
+    # Initialize cubit.
+    cubit = CubitPy()
+
+    cubit.cmd("create node location 0 0 0")
+    cubit.cmd("create node location 1 0 0")
+    cubit.cmd("create node location 0 1 0")
+    cubit.cmd("create node location 0 0 1")
+    cubit.cmd("create tet node 1 2 3 4")
+    tet_group = cubit.group(add_value="add tet all")
+    cubit.add_element_type(
+        tet_group,
+        cupy.element_type.tet4,
+        name="block_1",
+        material={"MAT": 1},
+        bc_description={"KINEM": "nonlinear"},
+    )
+
+    # Compare the input file created for 4C.
+    compare_yaml(cubit, additional_identifier=name, mesh_in_exo=export_exo)
+
+
 def test_element_types_hex():
     """Create a curved solid with different hex element types."""
 
