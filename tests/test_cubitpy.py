@@ -42,6 +42,7 @@ from cubitpy.cubit_utility import (
     string_to_node_set_info,
 )
 from cubitpy.cubitpy import CubitPy
+from cubitpy.exodus_utility import convert_exodus_to_dict
 from cubitpy.geometry_creation_functions import (
     create_brick_by_corner_points,
     create_parametric_surface,
@@ -126,17 +127,23 @@ def compare_yaml(
     ref_file = Path(testing_input) / (compare_name + ".4C.yaml")
     out_file = Path(testing_temp) / (compare_name + ".4C.yaml")
 
-    if mesh_in_exo:
-        # dump the input script with the mesh in exodus format
-        cubit.dump(out_file, mesh_in_exo=True)
-        # make sure the directory also contains the exo mesh
-        out_file_stem = out_file.with_name(out_file.name.removesuffix(".4C.yaml"))
-        assert out_file_stem.with_suffix(".exo").exists()
-    else:
-        cubit.dump(out_file)
+    cubit.dump(out_file, mesh_in_exo=mesh_in_exo)
 
-    ref_input_file = FourCInput.from_4C_yaml(ref_file)
-    out_input_file = FourCInput.from_4C_yaml(out_file)
+    def get_input_file_with_data(input_file_path):
+        """Load the input file into a FourCIPP object and if the mesh is given
+        in exodus format, add this as a data structure for comparison."""
+        input_file = FourCInput.from_4C_yaml(input_file_path)
+        if mesh_in_exo:
+            exo_path = input_file_path.parent / (compare_name + ".exo")
+            exo_data = convert_exodus_to_dict(exo_path)
+            section_name = "STRUCTURE GEOMETRY"
+            structure_section = input_file.pop(section_name)
+            structure_section["FILE"] = exo_data
+            input_file.combine_sections({section_name: structure_section})
+        return input_file
+
+    ref_input_file = get_input_file_with_data(ref_file)
+    out_input_file = get_input_file_with_data(out_file)
 
     try:
         files_are_equal = ref_input_file.compare(
@@ -2503,3 +2510,54 @@ def test_cubit_warnings_and_errors():
         match="ERROR: All dimensions must be nonzero and positive. Entered values are:",
     ):
         cubit.cmd("brick x -10")
+
+
+def test_exodus_to_dict():
+    """Create a simple model and check the convert exodus to dict
+    functionality."""
+
+    # Create the brick with a single solid element
+    cubit = CubitPy()
+    create_brick(
+        cubit,
+        1,
+        2,
+        3,
+        mesh_interval=[1, 1, 1],
+        element_type=cupy.element_type.hex8,
+        name="cube",
+    )
+
+    # Add node sets to the top surface and to the whole volume of the brick, to make
+    # the exodus file more general.
+    cubit.add_node_set(cubit.group(add_value="add surface 2"), name="top")
+    cubit.add_node_set(cubit.group(add_value="add volume 1"), name="all")
+
+    input_file_path = Path(testing_temp) / "exo_to_dict.4C.yaml"
+    exo_path = Path(testing_temp) / "exo_to_dict.exo"
+    cubit.dump(input_file_path, mesh_in_exo=True)
+
+    exo_dict = convert_exodus_to_dict(exo_path)
+
+    reference_exo_dict = {
+        "coordinates": [
+            [-0.5, -1.0, 1.5],
+            [-0.5, -1.0, -1.5],
+            [-0.5, 1.0, -1.5],
+            [-0.5, 1.0, 1.5],
+            [0.5, -1.0, 1.5],
+            [0.5, -1.0, -1.5],
+            [0.5, 1.0, -1.5],
+            [0.5, 1.0, 1.5],
+        ],
+        "exo_block_id_to_info": {0: {"cubit_id": 1, "exo_id": 0, "name": "cube"}},
+        "connect1": [[1, 2, 3, 4, 5, 6, 7, 8]],
+        "exo_node_set_id_to_info": {
+            0: {"cubit_id": 1, "exo_id": 0, "name": "cpy_1_s_top"},
+            1: {"cubit_id": 2, "exo_id": 1, "name": "cpy_2_v_all"},
+        },
+        "node_ns1": [2, 3, 6, 7],
+        "node_ns2": [1, 2, 3, 4, 5, 6, 7, 8],
+    }
+
+    compare_nested_dicts_or_lists(exo_dict, reference_exo_dict)
