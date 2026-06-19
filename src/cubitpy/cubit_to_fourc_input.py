@@ -33,44 +33,10 @@ import numpy as np
 from fourcipp.fourc_input import FourCInput
 
 from cubitpy.conf import GeometryType, cupy
+from cubitpy.exodus_utility import get_exo_info
 
 if TYPE_CHECKING:
     from cubitpy.cubitpy import CubitPy
-
-
-def get_exo_info(exo, entry_type) -> tuple[dict, dict]:
-    """Build mappings between Exodus IDs and Cubit IDs for blocks or
-    nodesets."""
-
-    if entry_type == "block":
-        exo_identifier = "eb"
-    elif entry_type == "nodeset":
-        exo_identifier = "ns"
-    else:
-        raise ValueError(f"Invalid entry type: {entry_type}")
-
-    if exo_identifier + "_names" not in exo.variables.keys():
-        return {}, {}
-
-    # List of explicitly given names
-    names = []
-    for line in exo.variables[exo_identifier + "_names"]:
-        name: str | None = str(netCDF4.chartostring(line))
-        if name == "":
-            name = None
-        names.append(name)
-
-    # Get information of all entries of the given type
-    cubit_id_to_info = {}
-    exo_id_to_info = {}
-    for exo_id, cubit_id in enumerate(
-        exo.variables[exo_identifier + "_prop1"][:].tolist()
-    ):
-        info = {"cubit_id": cubit_id, "exo_id": exo_id, "name": names[exo_id]}
-        cubit_id_to_info[cubit_id] = info.copy()
-        exo_id_to_info[exo_id] = info.copy()
-
-    return cubit_id_to_info, exo_id_to_info
 
 
 def add_node_sets_external_geometry(cubit: CubitPy, input_file: FourCInput) -> None:
