@@ -129,9 +129,16 @@ class CubitConnect(object):
                         stacklevel=3,
                     )
                 if len(return_value["errors"]) > 0:
-                    raise RuntimeError(
-                        get_log_string(return_value["errors"], "error(s)")
-                    )
+                    error_string = get_log_string(return_value["errors"], "error(s)")
+                    if cupy.on_cubit_error == "raise":
+                        raise RuntimeError(error_string)
+                    elif cupy.on_cubit_error == "warn":
+                        warnings.warn(
+                            error_string,
+                            category=CubitPyWarning,
+                            stacklevel=3,
+                        )
+                    # "ignore": silently continue
                 return return_value["return_value"]
             else:
                 return return_value

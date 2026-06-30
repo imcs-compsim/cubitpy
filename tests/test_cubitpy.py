@@ -2561,3 +2561,34 @@ def test_exodus_to_dict():
     }
 
     compare_nested_dicts_or_lists(exo_dict, reference_exo_dict)
+
+
+def test_on_cubit_error_config(tmp_path):
+    """The optional 'on_cubit_error' config key sets the error reaction."""
+
+    def write_config(extra=""):
+        """Write a minimal remote config, optionally with an extra line."""
+        path = tmp_path / "cubitpy_config.yaml"
+        path.write_text(
+            'cubitpy_mode: "remote"\n'
+            f"{extra}"
+            "remote_config:\n"
+            '  user: "user"\n'
+            '  host: "host"\n'
+            '  platform: "linux"\n'
+            '  cubit_path: "/cubit"\n'
+        )
+        return path
+
+    saved_config = cupy._config
+    try:
+        cupy.load_cubit_config(write_config())
+        assert cupy.on_cubit_error == "raise"  # default when the key is absent
+
+        cupy.load_cubit_config(write_config('on_cubit_error: "warn"\n'))
+        assert cupy.on_cubit_error == "warn"
+
+        with pytest.raises(RuntimeError, match="Invalid on_cubit_error"):
+            cupy.load_cubit_config(write_config('on_cubit_error: "bogus"\n'))
+    finally:
+        cupy._config = saved_config

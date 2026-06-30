@@ -73,6 +73,7 @@ remote_config:
   host: "hostname"
   platform: "windows"
   cubit_path: "C:\\Coreform_Cubit_2025.8"
+on_cubit_error: "raise"  # optional: "raise" (default), "warn" or "ignore"
 ```
 To run CubitPy one can either provide the configuration file then initializing CubitPy, or set an environment variable with the path to the configuration file.
 ```bash
