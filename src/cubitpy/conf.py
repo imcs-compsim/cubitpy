@@ -108,6 +108,17 @@ class CubitOptions(object):
         # Tolerance for geometry.
         self.eps_pos = 1e-10
 
+    @property
+    def on_cubit_error(self) -> str:
+        """How to react when a cubit command reports an error.
+
+        One of "raise" (default, raise a RuntimeError), "warn" (emit a
+        CubitPyWarning and continue) or "ignore" (silently continue),
+        set via the optional top-level 'on_cubit_error' key in the
+        config file.
+        """
+        return self._get_config().get("on_cubit_error", "raise")
+
     def _get_config(self) -> Dict[str, Any]:
         """Get the config dict or raise an error if not loaded."""
         if self._config is None:
@@ -134,6 +145,8 @@ class CubitOptions(object):
             "\n"
             "local_config:\n"
             '  cubit_path: "<local_cubit_install_path>"\n'
+            "\n"
+            'on_cubit_error: "raise"  # optional: "raise" (default), "warn" or "ignore"\n'
             "----------------------------------------\n"
             "- If mode = 'remote': remote_config MUST exist and contain user, host, platform, cubit_path.\n"
             "- If mode = 'local' : local_config MUST exist and contain cubit_path.\n"
@@ -152,6 +165,12 @@ class CubitOptions(object):
         mode = config["cubitpy_mode"]
         if mode not in ("remote", "local"):
             fail(f"Invalid cubitpy_mode '{mode}'. Expected 'remote' or 'local'.")
+
+        if config.get("on_cubit_error", "raise") not in ("raise", "warn", "ignore"):
+            fail(
+                f"Invalid on_cubit_error '{config['on_cubit_error']}'. "
+                "Expected 'raise', 'warn' or 'ignore'."
+            )
 
         if mode == "remote":
             if "remote_config" not in config:
