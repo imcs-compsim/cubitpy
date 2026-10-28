@@ -31,7 +31,7 @@ Issues = "https://github.com/imcs-compsim/cubitpy/issues/"
 [project.optional-dependencies]
 dev = [
   "pre-commit",
-  "pytest",
+  "pytest<9.2", # TODO: This fixes an incompatibility issue with pytest-benchmark, but should be removed once the issue is fixed upstream
   "pytest-benchmark",
   "pytest-cov",
   "deepdiff",
