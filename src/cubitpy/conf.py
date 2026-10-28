@@ -303,26 +303,18 @@ class CubitOptions(object):
 
         if cubit_platform == "linux" or cubit_platform == "macos":
             if self.is_coreform():
+                python_prefix = "python3."
                 python_files = [
                     path
-                    for path in cubit_path.rglob("python3*")
+                    for path in cubit_path.rglob(f"{python_prefix}*")
                     if path.is_file()
-                    and (  # Check if the file is named "python3" or "python3.x" where x is a version number
-                        path.name == "python3"
-                        or (
-                            path.name.startswith("python3.")
-                            and path.name.removeprefix("python3.")
-                            .replace(".", "")
-                            .isdigit()
-                        )
-                    )
+                    and path.name.removeprefix(python_prefix).isdigit()
                 ]
                 if len(python_files) != 1:
                     raise ValueError(
                         "Could not uniquely determine the path to the Cubit Python "
-                        f"interpreter. Expected exactly one 'python3' or versioned "
-                        f"'python3.x' executable under '{cubit_path}', but found "
-                        f"{len(python_files)}: {python_files}"
+                        f"interpreter. Expected exactly one 'python3.x' executable "
+                        f"under '{cubit_path}', but found {len(python_files)}: {python_files}"
                     )
                 return str(python_files[0])
             else:
