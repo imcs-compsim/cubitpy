@@ -108,15 +108,16 @@ class CubitOptions(object):
         self.eps_pos = 1e-10
 
     @property
-    def on_cubit_error(self) -> str:
-        """How to react when a cubit command reports an error.
+    def message_handling(self) -> str:
+        """How to handle warnings and errors reported by cubit commands.
 
-        One of "raise" (default, raise a RuntimeError), "warn" (emit a
-        CubitPyWarning and continue) or "ignore" (silently continue),
-        set via the optional top-level 'on_cubit_error' key in the
-        config file.
+        One of "default" (warnings are shown as CubitPyWarning, errors
+        raise a RuntimeError), "errors_as_warnings" (warnings and errors
+        are shown as CubitPyWarning) or "silent" (warnings and errors
+        are skipped), set via the optional top-level 'message_handling'
+        key in the config file.
         """
-        return self._get_config().get("on_cubit_error", "raise")
+        return self._get_config().get("message_handling", "default")
 
     def _get_config(self) -> Dict[str, Any]:
         """Get the config dict or raise an error if not loaded."""
@@ -145,7 +146,7 @@ class CubitOptions(object):
             "local_config:\n"
             '  cubit_path: "<local_cubit_install_path>"\n'
             "\n"
-            'on_cubit_error: "raise"  # optional: "raise" (default), "warn" or "ignore"\n'
+            'message_handling: "default"  # optional: "default", "errors_as_warnings" or "silent"\n'
             "----------------------------------------\n"
             "- If mode = 'remote': remote_config MUST exist and contain user, host, platform, cubit_path.\n"
             "- If mode = 'local' : local_config MUST exist and contain cubit_path.\n"
@@ -165,10 +166,11 @@ class CubitOptions(object):
         if mode not in ("remote", "local"):
             fail(f"Invalid cubitpy_mode '{mode}'. Expected 'remote' or 'local'.")
 
-        if config.get("on_cubit_error", "raise") not in ("raise", "warn", "ignore"):
+        message_handling = config.get("message_handling", "default")
+        if message_handling not in ("default", "errors_as_warnings", "silent"):
             fail(
-                f"Invalid on_cubit_error '{config['on_cubit_error']}'. "
-                "Expected 'raise', 'warn' or 'ignore'."
+                f"Invalid message_handling '{message_handling}'. "
+                "Expected 'default', 'errors_as_warnings' or 'silent'."
             )
 
         if mode == "remote":

@@ -2563,8 +2563,8 @@ def test_exodus_to_dict():
     compare_nested_dicts_or_lists(exo_dict, reference_exo_dict)
 
 
-def test_on_cubit_error_config(tmp_path):
-    """The optional 'on_cubit_error' config key sets the error reaction."""
+def test_message_handling_config(tmp_path):
+    """The optional 'message_handling' config key sets the message handling."""
 
     def write_config(extra=""):
         """Write a minimal remote config, optionally with an extra line."""
@@ -2583,12 +2583,12 @@ def test_on_cubit_error_config(tmp_path):
     saved_config = cupy._config
     try:
         cupy.load_cubit_config(write_config())
-        assert cupy.on_cubit_error == "raise"  # default when the key is absent
+        assert cupy.message_handling == "default"  # default when the key is absent
 
-        cupy.load_cubit_config(write_config('on_cubit_error: "warn"\n'))
-        assert cupy.on_cubit_error == "warn"
+        cupy.load_cubit_config(write_config('message_handling: "errors_as_warnings"\n'))
+        assert cupy.message_handling == "errors_as_warnings"
 
-        with pytest.raises(RuntimeError, match="Invalid on_cubit_error"):
-            cupy.load_cubit_config(write_config('on_cubit_error: "bogus"\n'))
+        with pytest.raises(RuntimeError, match="Invalid message_handling"):
+            cupy.load_cubit_config(write_config('message_handling: "bogus"\n'))
     finally:
         cupy._config = saved_config
