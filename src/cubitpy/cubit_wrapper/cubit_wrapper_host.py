@@ -122,7 +122,10 @@ class CubitConnect(object):
             self.channel.send(argument_list)
             return_value = self.channel.receive()
             if isinstance(return_value, dict):
-                if len(return_value["messages"]) > 0:
+                if (
+                    len(return_value["messages"]) > 0
+                    and cupy.message_handling != "silent"
+                ):
                     warnings.warn(
                         get_log_string(return_value["messages"], "message(s)"),
                         category=CubitPyWarning,
@@ -130,15 +133,15 @@ class CubitConnect(object):
                     )
                 if len(return_value["errors"]) > 0:
                     error_string = get_log_string(return_value["errors"], "error(s)")
-                    if cupy.on_cubit_error == "raise":
+                    if cupy.message_handling == "default":
                         raise RuntimeError(error_string)
-                    elif cupy.on_cubit_error == "warn":
+                    elif cupy.message_handling == "errors_as_warnings":
                         warnings.warn(
                             error_string,
                             category=CubitPyWarning,
                             stacklevel=3,
                         )
-                    # "ignore": silently continue
+                    # "silent": skip the errors
                 return return_value["return_value"]
             else:
                 return return_value
